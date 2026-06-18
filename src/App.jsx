@@ -1,13 +1,38 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+// ── Supabase client ───────────────────────────────────────────────────────────
+const SUPABASE_URL = "https://ixyxeqkqobwbujwkuliv.supabase.co";
+const SUPABASE_KEY = "sb_publishable_2h5IhSluEa9yUOwT3oWrRQ_40JZrf7G";
+
 const storage = {
   get: async (key) => {
-    try { const val = localStorage.getItem(key); return val ? { value: val } : null; } catch { return null; }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/raspored?id=eq.${encodeURIComponent(key)}&select=data`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+      });
+      const rows = await res.json();
+      if (rows && rows.length > 0) return { value: JSON.stringify(rows[0].data) };
+      return null;
+    } catch { return null; }
   },
   set: async (key, value) => {
-    try { localStorage.setItem(key, value); return true; } catch { return null; }
+    try {
+      const data = typeof value === "string" ? JSON.parse(value) : value;
+      await fetch(`${SUPABASE_URL}/rest/v1/raspored`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({ id: key, data, updated_at: new Date().toISOString() })
+      });
+      return true;
+    } catch { return null; }
   },
 };
+
 
 // ── Initial data ──────────────────────────────────────────────────────────────
 const initialWorkers = [
