@@ -1,18 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-// ── Storage shim (localStorage, shared via key prefix) ───────────────────────
 const storage = {
   get: async (key) => {
-    try {
-      const val = localStorage.getItem(key);
-      return val ? { value: val } : null;
-    } catch { return null; }
+    try { const val = localStorage.getItem(key); return val ? { value: val } : null; } catch { return null; }
   },
   set: async (key, value) => {
     try { localStorage.setItem(key, value); return true; } catch { return null; }
   },
 };
-
 
 // ── Initial data ──────────────────────────────────────────────────────────────
 const initialWorkers = [
@@ -124,7 +119,7 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 }
 
 // ── SiteCard ──────────────────────────────────────────────────────────────────
-function SiteCard({ site, allData, duplicateWorkers, onUpdate, onDelete, readOnly }) {
+function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly }) {
   const [modal, setModal] = useState(null); // cat key or null
 
   const addItem = (cat, val) => {
@@ -168,7 +163,14 @@ function SiteCard({ site, allData, duplicateWorkers, onUpdate, onDelete, readOnl
       {modal && (
         <BottomSheet
           title={`Dodaj ${CATS.find(c => c.key === modal)?.label.toLowerCase().replace(/i$/, "")}`}
-          options={(allData[modal] || []).filter(v => !(site[modal] || []).includes(v))}
+          options={(allData[modal] || []).filter(v => {
+              // Already on THIS site — hide
+              if ((site[modal] || []).includes(v)) return false;
+              // Already on ANY other site — hide
+              const usedElsewhere = allSites.some(s => s.id !== site.id && (s[modal] || []).includes(v));
+              if (usedElsewhere) return false;
+              return true;
+            })}
           onAdd={(val) => addItem(modal, val)}
           onClose={() => setModal(null)}
         />
@@ -595,7 +597,7 @@ export default function App() {
           <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
         ) : (
           sites && sites.map(site => (
-            <SiteCard key={site.id} site={site} allData={allData}
+            <SiteCard key={site.id} site={site} allSites={sites} allData={allData}
               duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
               onDelete={() => deleteSite(site.id)} readOnly={readOnly} />
           ))
