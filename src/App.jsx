@@ -54,11 +54,14 @@ const initialMachines  = []; // korisnik dodaje
 const siteNames = [
   "KŽ — Marđan Marković","UŽ Procces","UŽ Nazorova","UŽ Opatija",
   "Rasovičće","Primu Zagorje","N.40","Rancec","Zelina","Relina",
-  "Slubica","Dejinić","Tuhelj","Komin","Fali",
+  "Slubica","Dejinić","Tuhelj",
 ];
+const PERMANENT_SITES = ["Komin", "Fali"]; // uvijek vidljive, uvijek na dnu
 
-const makeEmptySites = () =>
-  siteNames.map((name, i) => ({ id: `site-${i}`, name, workers: [], trucks: [], trailers: [], machines: [] }));
+const makeEmptySites = () => [
+  ...siteNames.map((name, i) => ({ id: `site-${i}`, name, workers: [], trucks: [], trailers: [], machines: [] })),
+  ...PERMANENT_SITES.map((name) => ({ id: `permanent-${name}`, name, workers: [], trucks: [], trailers: [], machines: [], permanent: true })),
+];
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 const dateKey  = (d) => `raspored-day-${d}`;
@@ -161,7 +164,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: "#1e293b" }}>{site.name}</span>
-        {!readOnly && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>🗑</button>}
+        {!readOnly && !site.permanent && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>🗑</button>}
       </div>
 
       {CATS.map(cat => (
@@ -302,7 +305,8 @@ function BazaScreen({ allData, onUpdate, onBack }) {
 
 // ── PrintModal ────────────────────────────────────────────────────────────────
 function PrintModal({ sites, date, onClose }) {
-  const activeSites = sites.filter(s => CATS.some(c => (s[c.key] || []).length > 0));
+  const regularSites = sites.filter(s => !s.permanent && CATS.some(c => (s[c.key] || []).length > 0));
+  const permanentSites = sites.filter(s => s.permanent);
   const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
   // Print columns: workers left, then trucks | trailers | machines right
@@ -339,9 +343,9 @@ function PrintModal({ sites, date, onClose }) {
             </div>
           </div>
 
-          {/* Sites */}
-          {activeSites.map((site, idx) => (
-            <div key={site.id} className="print-site" style={{ borderBottom: idx < activeSites.length - 1 ? "1px solid #e2e8f0" : "none", paddingBottom: 16, marginBottom: 16 }}>
+          {/* Regular sites */}
+          {regularSites.map((site, idx) => (
+            <div key={site.id} className="print-site" style={{ borderBottom: idx < regularSites.length - 1 ? "1px solid #e2e8f0" : "none", paddingBottom: 16, marginBottom: 16 }}>
               {/* Naziv + crta */}
               <div style={{ fontSize: 14, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 10 }}>
                 {site.name}
@@ -385,9 +389,44 @@ function PrintModal({ sites, date, onClose }) {
             </div>
           ))}
 
-          {activeSites.length === 0 && (
-            <div style={{ textAlign: "center", color: "#94a3b8", padding: 40 }}>Nema unesenih podataka za ovaj dan.</div>
+          {regularSites.length === 0 && (
+            <div style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Nema unesenih podataka za ovaj dan.</div>
           )}
+
+          {/* Permanent sites — Komin i Fali uvijek na dnu desno */}
+          <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end" }}>
+            {permanentSites.map(site => (
+              <div key={site.id} style={{ width: 220, border: "2px solid #1e293b", borderRadius: 8, padding: "10px 14px" }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
+                  {site.name}
+                </div>
+                <div style={{ display: "flex", gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    {(site.workers || []).length > 0 ? (site.workers || []).map((w, i) => (
+                      <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "3px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
+                    )) : <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
+                  </div>
+                  {CATS.filter(c => c.key !== "workers").some(c => (site[c.key] || []).length > 0) && (
+                    <>
+                      <div style={{ width: 1, background: "#1e293b", opacity: 0.15 }} />
+                      <div style={{ flex: 1 }}>
+                        {CATS.filter(c => c.key !== "workers").map(cat => {
+                          const vals = site[cat.key] || [];
+                          if (!vals.length) return null;
+                          return (
+                            <div key={cat.key} style={{ marginBottom: 4 }}>
+                              <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>{cat.icon} {cat.label}</div>
+                              {vals.map((v, i) => <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0" }}>{v}</div>)}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 16, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
             Generirano: {new Date().toLocaleString("hr-HR")}
@@ -469,9 +508,19 @@ export default function App() {
       if (res?.value) {
         const data = JSON.parse(res.value);
         // Migrate old sites without trailers/machines
-        const migratedSites = (data.sites || makeEmptySites()).map(s => ({
+        let migratedSites = (data.sites || makeEmptySites()).map(s => ({
           ...s, trailers: s.trailers || [], machines: s.machines || []
         }));
+        // Ensure permanent sites always exist
+        PERMANENT_SITES.forEach(name => {
+          if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
+            migratedSites.push({ id: `permanent-${name}`, name, workers: [], trucks: [], trailers: [], machines: [], permanent: true });
+          }
+        });
+        // Ensure permanent flag is set
+        migratedSites = migratedSites.map(s =>
+          PERMANENT_SITES.includes(s.name) ? { ...s, permanent: true } : s
+        );
         setSites(migratedSites);
         setLastEditor(data.lastEditor || null);
       } else {
@@ -544,7 +593,8 @@ export default function App() {
     return new Set(Object.keys(counts).filter(w => counts[w] > 1));
   })();
 
-  const totals = CATS.map(c => sites ? sites.reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
+  // Fali se ne računa u brojač — samo radnici koji su na gradilištima
+  const totals = CATS.map(c => sites ? sites.filter(s => s.name !== "Fali").reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
