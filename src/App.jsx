@@ -537,23 +537,18 @@ function PrintModal({ sites, date, onClose, cats }) {
                   {/* Separator */}
                   <div style={{ width: 1, background: "#1e293b", opacity: 0.15, flexShrink: 0 }} />
 
-                  {/* Desna strana: kamioni, prikolice, strojevi — svaki u svojoj sekciji */}
-                  <div style={{ flex: 1, paddingLeft: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {rightCats.map(cat => {
-                      const vals = site[cat.key] || [];
-                      if (vals.length === 0) return null;
-                      return (
-                        <div key={cat.key}>
-                          <div style={{ fontSize: 8, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>{cat.icon} {cat.label}</div>
-                          {vals.map((v, i) => (
-                            <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < vals.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{v}</div>
-                          ))}
-                        </div>
+                  {/* Desna strana: kamioni + prikolice + strojevi + sve ostalo — jedno ispod drugog, bez naslova */}
+                  <div style={{ flex: 1, paddingLeft: 10 }}>
+                    {(() => {
+                      const allRightVals = rightCats.flatMap(cat => site[cat.key] || []);
+                      return allRightVals.length > 0 ? (
+                        allRightVals.map((v, i) => (
+                          <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < allRightVals.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{v}</div>
+                        ))
+                      ) : (
+                        <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
                       );
-                    })}
-                    {rightCats.every(cat => (site[cat.key] || []).length === 0) && (
-                      <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
-                    )}
+                    })()}
                   </div>
                 </div>
               </div>
