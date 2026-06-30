@@ -164,7 +164,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
         {!readOnly && !site.permanent && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>🗑</button>}
       </div>
 
-      {CATS.map(cat => (
+      {CATS.filter(cat => !site.permanent || cat.key === "workers").map(cat => (
         <div key={cat.key} style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
             {cat.icon} {cat.label}
@@ -389,36 +389,17 @@ function PrintModal({ sites, date, onClose }) {
             <div style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Nema unesenih podataka za ovaj dan.</div>
           )}
 
-          {/* Permanent sites — Komin i Fali uvijek na dnu desno */}
+          {/* Permanent sites — Komin i Fali uvijek na dnu desno, samo radnici */}
           <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end" }}>
             {permanentSites.map(site => (
               <div key={site.id} style={{ width: 220, border: "2px solid #1e293b", borderRadius: 8, padding: "10px 14px" }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
                   {site.name}
                 </div>
-                <div style={{ display: "flex", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    {(site.workers || []).length > 0 ? (site.workers || []).map((w, i) => (
-                      <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "3px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
-                    )) : <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
-                  </div>
-                  {CATS.filter(c => c.key !== "workers").some(c => (site[c.key] || []).length > 0) && (
-                    <>
-                      <div style={{ width: 1, background: "#1e293b", opacity: 0.15 }} />
-                      <div style={{ flex: 1 }}>
-                        {CATS.filter(c => c.key !== "workers").map(cat => {
-                          const vals = site[cat.key] || [];
-                          if (!vals.length) return null;
-                          return (
-                            <div key={cat.key} style={{ marginBottom: 4 }}>
-                              <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>{cat.icon} {cat.label}</div>
-                              {vals.map((v, i) => <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0" }}>{v}</div>)}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  )}
+                <div>
+                  {(site.workers || []).length > 0 ? (site.workers || []).map((w, i) => (
+                    <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "3px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
+                  )) : <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
                 </div>
               </div>
             ))}
