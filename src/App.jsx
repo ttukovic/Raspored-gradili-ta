@@ -101,11 +101,16 @@ const LOGO_URL = "/logo.png";
 // ── MiniLogo — mali logo za zaglavlja svih ekrana (osim landing/login gdje je veći) ──
 function MiniLogo({ size = 28 }) {
   return LOGO_URL ? (
-    <img src={LOGO_URL} alt="Gradprom" style={{
-      height: size, width: "auto", objectFit: "contain", flexShrink: 0,
-      borderRadius: size * 0.25,
-      filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.25))"
-    }} />
+    <div style={{
+      background: "#fff", borderRadius: size * 0.3,
+      padding: size * 0.12,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      boxShadow: "0 2px 6px rgba(0,0,0,0.2)", flexShrink: 0
+    }}>
+      <img src={LOGO_URL} alt="Gradprom" style={{
+        height: size, width: "auto", objectFit: "contain", display: "block"
+      }} />
+    </div>
   ) : (
     <div style={{
       width: size, height: size, borderRadius: size * 0.28, background: BRAND_RED,
