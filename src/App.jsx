@@ -662,16 +662,25 @@ export default function App() {
         </div>
       )}
 
-      {/* Site cards */}
+      {/* Site cards — dva stupca, Komin i Fali uvijek zadnji */}
+      <style>{`
+        @media (max-width: 640px) {
+          .sites-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
       <div style={{ padding: "16px 16px 110px" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
         ) : (
-          sites && sites.map(site => (
-            <SiteCard key={site.id} site={site} allSites={sites} allData={allData}
-              duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
-              onDelete={() => deleteSite(site.id)} readOnly={readOnly} />
-          ))
+          <div className="sites-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}>
+            {sites && [...sites]
+              .sort((a, b) => (a.permanent ? 1 : 0) - (b.permanent ? 1 : 0))
+              .map(site => (
+                <SiteCard key={site.id} site={site} allSites={sites} allData={allData}
+                  duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
+                  onDelete={() => deleteSite(site.id)} readOnly={readOnly} />
+              ))}
+          </div>
         )}
       </div>
 
