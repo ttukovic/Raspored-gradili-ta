@@ -452,7 +452,7 @@ function PrintModal({ sites, date, onClose, cats }) {
   const contentRef = useRef(null);
   const [zoom, setZoom] = useState(1);
 
-  const A4_USABLE_HEIGHT_PX = 1000;
+  const A4_USABLE_HEIGHT_PX = 920; // konzervativnije, da uvijek stane uz padding print-layera
 
   const calcZoom = useCallback(() => {
     if (!contentRef.current) return;
@@ -462,7 +462,7 @@ function PrintModal({ sites, date, onClose, cats }) {
         if (!contentRef.current) return;
         const naturalHeight = contentRef.current.scrollHeight;
         if (naturalHeight > A4_USABLE_HEIGHT_PX) {
-          const z = Math.max(0.4, A4_USABLE_HEIGHT_PX / naturalHeight);
+          const z = Math.max(0.3, A4_USABLE_HEIGHT_PX / naturalHeight);
           setZoom(z);
         } else {
           setZoom(1);
@@ -563,7 +563,7 @@ function PrintModal({ sites, date, onClose, cats }) {
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 10mm; }
+        @page { size: A4 portrait; margin: 8mm; }
         @media print {
           /* Sakrij sve OSIM print-only sloja */
           #root { display: none !important; }
@@ -587,7 +587,7 @@ function PrintModal({ sites, date, onClose, cats }) {
 
       {/* Print-only sloj — izvan svih fixed/absolute roditelja, direktno u body, samo za printer */}
       {createPortal(
-        <div id="print-only-layer" style={{ display: "none", width: "794px", padding: "20px", boxSizing: "border-box" }}>
+        <div id="print-only-layer" style={{ display: "none", width: "794px", padding: "8px", boxSizing: "border-box" }}>
           {printableContent}
         </div>,
         document.body
