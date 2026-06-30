@@ -111,8 +111,31 @@ function Badge({ label, color, onRemove, warn }) {
 // ── BottomSheet ───────────────────────────────────────────────────────────────
 function BottomSheet({ title, options, onAdd, onClose }) {
   const [search, setSearch] = useState("");
+  const [highlighted, setHighlighted] = useState(0);
   const sorted = [...options].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
   const filtered = sorted.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const showAddNew = filtered.length === 0 && search;
+  const listLength = showAddNew ? 1 : filtered.length;
+
+  // Reset highlight when search changes
+  useEffect(() => { setHighlighted(0); }, [search]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlighted(h => Math.min(h + 1, listLength - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted(h => Math.max(h - 1, 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (showAddNew) { onAdd(search); onClose(); }
+      else if (filtered[highlighted]) { onAdd(filtered[highlighted]); onClose(); }
+    } else if (e.key === "Escape") {
+      onClose();
+    }
+  };
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
@@ -121,20 +144,25 @@ function BottomSheet({ title, options, onAdd, onClose }) {
       }}>
         <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 16px" }} />
         <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700 }}>{title}</h3>
-        <input autoFocus placeholder="Traži ili dodaj novo..." value={search} onChange={e => setSearch(e.target.value)}
+        <input autoFocus placeholder="Traži ili dodaj novo... (↑↓ Enter)" value={search}
+          onChange={e => setSearch(e.target.value)} onKeyDown={handleKeyDown}
           style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 15, marginBottom: 12, outline: "none", width: "100%", boxSizing: "border-box" }} />
         <div style={{ overflowY: "auto", flex: 1 }}>
-          {filtered.length === 0 && search && (
+          {showAddNew && (
             <button onClick={() => { onAdd(search); onClose(); }} style={{
               display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
-              border: "1.5px dashed #f97316", borderRadius: 10, background: "#fff7ed",
+              border: highlighted === 0 ? "1.5px solid #f97316" : "1.5px dashed #f97316",
+              borderRadius: 10, background: highlighted === 0 ? "#fed7aa" : "#fff7ed",
               color: "#f97316", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 6
             }}>+ Dodaj "{search}" kao novo</button>
           )}
-          {filtered.map(opt => (
-            <button key={opt} onClick={() => { onAdd(opt); onClose(); }} style={{
+          {filtered.map((opt, i) => (
+            <button key={opt} onClick={() => { onAdd(opt); onClose(); }}
+              onMouseEnter={() => setHighlighted(i)} style={{
               display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
-              border: "none", borderBottom: "1px solid #f1f5f9", background: "none", fontSize: 14, cursor: "pointer", color: "#1e293b"
+              border: "none", borderBottom: "1px solid #f1f5f9",
+              background: highlighted === i ? "#eff6ff" : "none",
+              fontSize: 14, cursor: "pointer", color: "#1e293b"
             }}>{opt}</button>
           ))}
         </div>
