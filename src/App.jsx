@@ -494,7 +494,8 @@ export default function App() {
   const pollRef = useRef(null);
 
   const isToday = currentDate === today();
-  const readOnly = !isToday && !user?.admin;
+  const isPast = currentDate < today();
+  const readOnly = isPast && !user?.admin; // budući dani su uvijek editabilni, prošli samo za admine
 
   // ── Load day ──
   const loadDay = useCallback(async (dateStr) => {
@@ -546,10 +547,10 @@ export default function App() {
 
   // ── Poll ──
   useEffect(() => {
-    if (!user || !isToday) return;
+    if (!user || readOnly) return;
     pollRef.current = setInterval(() => loadDay(currentDate), 15000);
     return () => clearInterval(pollRef.current);
-  }, [user, currentDate, isToday, loadDay]);
+  }, [user, currentDate, readOnly, loadDay]);
 
   // ── Save day ──
   const save = useCallback(async (newSites) => {
@@ -635,7 +636,7 @@ export default function App() {
         {/* Date nav */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 14, paddingBottom: 14, overflowX: "auto" }}>
           <button onClick={() => setCurrentDate(addDays(currentDate, -1))} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 18, cursor: "pointer", flexShrink: 0 }}>‹</button>
-          {Array.from({ length: 8 }, (_, i) => addDays(today(), i - 7)).map(d => {
+          {Array.from({ length: 11 }, (_, i) => addDays(today(), i - 7)).map(d => {
             const isActive = d === currentDate;
             return (
               <button key={d} onClick={() => setCurrentDate(d)} style={{
@@ -646,10 +647,9 @@ export default function App() {
               }}>{d === today() ? "Danas" : new Date(d + "T12:00:00").toLocaleDateString("hr-HR", { day: "numeric", month: "numeric" })}</button>
             );
           })}
-          <button onClick={() => setCurrentDate(addDays(currentDate, 1))} disabled={currentDate >= today()} style={{
-            background: currentDate >= today() ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.2)",
-            border: "none", color: currentDate >= today() ? "rgba(255,255,255,0.3)" : "#fff",
-            borderRadius: 8, padding: "6px 12px", fontSize: 18, cursor: currentDate >= today() ? "not-allowed" : "pointer", flexShrink: 0
+          <button onClick={() => setCurrentDate(addDays(currentDate, 1))} style={{
+            background: "rgba(255,255,255,0.2)", border: "none", color: "#fff",
+            borderRadius: 8, padding: "6px 12px", fontSize: 18, cursor: "pointer", flexShrink: 0
           }}>›</button>
         </div>
       </div>
