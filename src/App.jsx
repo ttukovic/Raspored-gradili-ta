@@ -492,29 +492,27 @@ export default function App() {
   const [screen, setScreen] = useState("raspored");
   const [newSiteName, setNewSiteName] = useState("");
   const pollRef = useRef(null);
+  const lastLocalEditRef = useRef(0); // timestamp zadnje lokalne promjene
 
   const isToday = currentDate === today();
   const isPast = currentDate < today();
   const readOnly = isPast && !user?.admin; // budući dani su uvijek editabilni, prošli samo za admine
 
-  // ── Load day ──
+  // ── Load day (initial — shows loading state) ──
   const loadDay = useCallback(async (dateStr) => {
     setLoading(true);
     try {
       const res = await storage.get(dateKey(dateStr), true);
       if (res?.value) {
         const data = JSON.parse(res.value);
-        // Migrate old sites without trailers/machines
         let migratedSites = (data.sites || makeEmptySites()).map(s => ({
           ...s, trailers: s.trailers || [], machines: s.machines || []
         }));
-        // Ensure permanent sites always exist
         PERMANENT_SITES.forEach(name => {
           if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
             migratedSites.push({ id: `permanent-${name}`, name, workers: [], trucks: [], trailers: [], machines: [], permanent: true });
           }
         });
-        // Ensure permanent flag is set
         migratedSites = migratedSites.map(s =>
           PERMANENT_SITES.includes(s.name) ? { ...s, permanent: true } : s
         );
@@ -526,6 +524,31 @@ export default function App() {
       }
     } catch (_) { setSites(makeEmptySites()); }
     setLoading(false);
+  }, []);
+
+  // ── Silent refresh (background poll — no loading flicker, skips if user just edited) ──
+  const silentRefresh = useCallback(async (dateStr) => {
+    // Ako je korisnik nešto promijenio u zadnjih 5 sekundi, preskoči ovaj poll ciklus
+    if (Date.now() - lastLocalEditRef.current < 5000) return;
+    try {
+      const res = await storage.get(dateKey(dateStr), true);
+      if (res?.value) {
+        const data = JSON.parse(res.value);
+        let migratedSites = (data.sites || makeEmptySites()).map(s => ({
+          ...s, trailers: s.trailers || [], machines: s.machines || []
+        }));
+        PERMANENT_SITES.forEach(name => {
+          if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
+            migratedSites.push({ id: `permanent-${name}`, name, workers: [], trucks: [], trailers: [], machines: [], permanent: true });
+          }
+        });
+        migratedSites = migratedSites.map(s =>
+          PERMANENT_SITES.includes(s.name) ? { ...s, permanent: true } : s
+        );
+        setSites(migratedSites);
+        setLastEditor(data.lastEditor || null);
+      }
+    } catch (_) {}
   }, []);
 
   // ── Load baza on mount ──
@@ -545,16 +568,17 @@ export default function App() {
     loadDay(currentDate);
   }, [user, currentDate, loadDay]);
 
-  // ── Poll ──
+  // ── Poll (silent, skips during active editing) ──
   useEffect(() => {
     if (!user || readOnly) return;
-    pollRef.current = setInterval(() => loadDay(currentDate), 15000);
+    pollRef.current = setInterval(() => silentRefresh(currentDate), 15000);
     return () => clearInterval(pollRef.current);
-  }, [user, currentDate, readOnly, loadDay]);
+  }, [user, currentDate, readOnly, silentRefresh]);
 
   // ── Save day ──
   const save = useCallback(async (newSites) => {
     if (readOnly) return;
+    lastLocalEditRef.current = Date.now(); // označi da je korisnik upravo nešto promijenio
     try {
       await storage.set(dateKey(currentDate), JSON.stringify({ sites: newSites, lastEditor: user.name, savedAt: new Date().toISOString() }), true);
       setSavedFlash(true);
@@ -564,10 +588,15 @@ export default function App() {
 
   // ── Save baza ──
   const saveBaza = async (newAllData) => {
+    lastLocalEditRef.current = Date.now();
     try { await storage.set(BAZA_KEY, JSON.stringify(newAllData)); } catch (_) {}
   };
 
-  const updateSites = (newSites) => { setSites(newSites); save(newSites); };
+  const updateSites = (newSites) => {
+    lastLocalEditRef.current = Date.now();
+    setSites(newSites);
+    save(newSites);
+  };
   const updateSite = (updated) => updateSites(sites.map(s => s.id === updated.id ? updated : s));
   const deleteSite = (id) => updateSites(sites.filter(s => s.id !== id));
 
