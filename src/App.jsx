@@ -900,16 +900,21 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
   const [yearMonth, setYearMonth] = useState(
     `${today_.getFullYear()}-${String(today_.getMonth() + 1).padStart(2, "0")}`
   );
-  const [hoursData, setHoursData] = useState(null); // { [workerName]: { [day]: hours } }
+  const [hoursData, setHoursData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("calendar"); // "calendar" | "workers"
   const [selectedWorker, setSelectedWorker] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
   const [search, setSearch] = useState("");
+  const [editModal, setEditModal] = useState(null); // { worker, day }
+  const [editValue, setEditValue] = useState("");
 
   const [y, m] = yearMonth.split("-").map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
   const monthLabel = new Date(y, m - 1, 1).toLocaleDateString("hr-HR", { month: "long", year: "numeric" });
+  const firstDayOfWeek = (new Date(y, m - 1, 1).getDay() + 6) % 7; // 0=Pon
+  const DAY_LABELS = ["Po", "Ut", "Sr", "Če", "Pe", "Su", "Ne"];
 
-  // ── Load hours for selected month ──
   useEffect(() => {
     setLoading(true);
     storage.get(hoursKey(yearMonth)).then(res => {
@@ -923,13 +928,10 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
     try { await storage.set(hoursKey(yearMonth), JSON.stringify(newData)); } catch (_) {}
   };
 
-  // ── Get hours for a worker on a specific day ──
-  // Ako postoji ručni unos, koristi njega. Inače, ako je radnik bio na nekom gradilištu taj dan (samo za TRENUTNI dan iz sites prop-a), default 9h. Za druge dane bez unosa, 0h (treba ručno unijeti ili će ostati 0 dok se ne potvrdi).
   const getDayHours = (workerName, day) => {
-    if (hoursData && hoursData[workerName] && hoursData[workerName][day] !== undefined) {
+    if (hoursData && hoursData[workerName] && hoursData[workerName][day] !== undefined)
       return hoursData[workerName][day];
-    }
-    return null; // nema unosa
+    return null;
   };
 
   const setDayHours = (workerName, day, value) => {
@@ -944,15 +946,46 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
     return Object.values(hoursData[workerName]).reduce((a, h) => a + (Number(h) || 0), 0);
   };
 
-  const filteredWorkers = allWorkers
-    .filter(w => w.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+  const getDayTotal = (day) => {
+    if (!hoursData) return 0;
+    return allWorkers.reduce((a, w) => {
+      const h = hoursData[w]?.[day];
+      return a + (h !== undefined ? Number(h) : 0);
+    }, 0);
+  };
+
+  const getDayWorkerCount = (day) => {
+    if (!hoursData) return 0;
+    return allWorkers.filter(w => hoursData[w]?.[day] > 0).length;
+  };
 
   const changeMonth = (delta) => {
     const d = new Date(y, m - 1 + delta, 1);
     setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    setSelectedDay(null);
+    setSelectedWorker(null);
   };
 
+  const openEdit = (worker, day) => {
+    const current = getDayHours(worker, day);
+    setEditValue(current !== null ? String(current) : String(STANDARD_DAILY_HOURS));
+    setEditModal({ worker, day });
+  };
+
+  const confirmEdit = () => {
+    if (!editModal) return;
+    const val = parseFloat(editValue.replace(",", "."));
+    if (!isNaN(val) && val >= 0 && val <= 24) {
+      setDayHours(editModal.worker, editModal.day, val);
+    }
+    setEditModal(null);
+  };
+
+  const filteredWorkers = allWorkers
+    .filter(w => w.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+
+  // Ako je otvoren detalj radnika (iz workers view)
   if (selectedWorker) {
     return (
       <WorkerHoursDetail
@@ -970,8 +1003,9 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
           <div>
@@ -981,22 +1015,123 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
         </div>
 
         {/* Month nav */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <button onClick={() => changeMonth(-1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>‹</button>
           <div style={{ fontSize: 16, fontWeight: 700, textTransform: "capitalize" }}>{monthLabel}</div>
           <button onClick={() => changeMonth(1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>›</button>
         </div>
+
+        {/* View tabs */}
+        <div style={{ display: "flex", gap: 4 }}>
+          <button onClick={() => { setView("calendar"); setSelectedDay(null); }} style={{
+            flex: 1, padding: "8px 0", border: "none", borderRadius: "8px 8px 0 0",
+            fontSize: 13, fontWeight: 700, cursor: "pointer",
+            background: view === "calendar" ? "#fff" : "rgba(255,255,255,0.2)",
+            color: view === "calendar" ? "#C73E3E" : "#fff"
+          }}>📅 Po danu</button>
+          <button onClick={() => { setView("workers"); setSelectedDay(null); }} style={{
+            flex: 1, padding: "8px 0", border: "none", borderRadius: "8px 8px 0 0",
+            fontSize: 13, fontWeight: 700, cursor: "pointer",
+            background: view === "workers" ? "#fff" : "rgba(255,255,255,0.2)",
+            color: view === "workers" ? "#C73E3E" : "#fff"
+          }}>👷 Po radniku</button>
+        </div>
       </div>
 
-      <div style={{ padding: 16 }}>
-        <input
-          placeholder="Traži radnika..." value={search} onChange={e => setSearch(e.target.value)}
-          style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 12 }}
-        />
+      {loading ? (
+        <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
+      ) : view === "calendar" ? (
+        /* ── KALENDAR VIEW ── */
+        <div style={{ padding: 16 }}>
+          {/* Mini kalendar */}
+          <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+            {/* Dani u tjednu */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 8 }}>
+              {DAY_LABELS.map(d => (
+                <div key={d} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>{d}</div>
+              ))}
+            </div>
+            {/* Dani u mjesecu */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+                const isSelected = selectedDay === day;
+                const isToday = `${y}-${String(m).padStart(2,"0")}-${String(day).padStart(2,"0")}` === new Date().toISOString().slice(0,10);
+                const workerCount = getDayWorkerCount(day);
+                const isWeekend = ((firstDayOfWeek + day - 1) % 7) >= 5;
+                return (
+                  <button key={day} onClick={() => setSelectedDay(isSelected ? null : day)} style={{
+                    padding: "8px 2px", border: "none", borderRadius: 8, cursor: "pointer",
+                    background: isSelected ? "#C73E3E" : isToday ? "#fef2f2" : "transparent",
+                    color: isSelected ? "#fff" : isWeekend ? "#94a3b8" : "#1e293b",
+                    fontSize: 13, fontWeight: isToday ? 800 : 500,
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2
+                  }}>
+                    <span>{day}</span>
+                    {workerCount > 0 && (
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: isSelected ? "#fff" : "#C73E3E", opacity: 0.8 }} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
-        ) : (
+          {/* Detalj odabranog dana */}
+          {selectedDay ? (
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>
+                {new Date(y, m-1, selectedDay).toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "long" })}
+                <span style={{ fontSize: 12, color: "#94a3b8", marginLeft: 8 }}>
+                  {getDayWorkerCount(selectedDay)} radnika · {getDayTotal(selectedDay)}h ukupno
+                </span>
+              </div>
+              <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                {filteredWorkers.map((w, i) => {
+                  const hours = getDayHours(w, selectedDay);
+                  return (
+                    <div key={w} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "11px 16px", borderBottom: i < filteredWorkers.length - 1 ? "1px solid #f1f5f9" : "none"
+                    }}>
+                      <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{w}</span>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <button onClick={() => setDayHours(w, selectedDay, 0)} style={{
+                          fontSize: 11, padding: "3px 7px", borderRadius: 6, border: "1.5px solid #fecaca",
+                          background: hours === 0 ? "#ef4444" : "#fef2f2", color: hours === 0 ? "#fff" : "#ef4444",
+                          cursor: "pointer", fontWeight: 600
+                        }}>0h</button>
+                        <button onClick={() => setDayHours(w, selectedDay, STANDARD_DAILY_HOURS)} style={{
+                          fontSize: 11, padding: "3px 7px", borderRadius: 6, border: "1.5px solid #bbf7d0",
+                          background: hours === STANDARD_DAILY_HOURS ? "#059669" : "#ecfdf5", color: hours === STANDARD_DAILY_HOURS ? "#fff" : "#059669",
+                          cursor: "pointer", fontWeight: 600
+                        }}>{STANDARD_DAILY_HOURS}h</button>
+                        <button onClick={() => openEdit(w, selectedDay)} style={{
+                          fontSize: 13, fontWeight: 800, padding: "3px 10px", borderRadius: 6,
+                          border: "1.5px solid #e2e8f0",
+                          background: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#fef2f2" : "#fff",
+                          color: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#C73E3E" : "#94a3b8",
+                          cursor: "pointer", minWidth: 42
+                        }}>{hours !== null ? `${hours}h` : "—"}</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{ textAlign: "center", color: "#94a3b8", padding: 32, fontSize: 14 }}>
+              Klikni na dan u kalendaru da vidiš sate
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── RADNICI VIEW ── */
+        <div style={{ padding: 16 }}>
+          <input
+            placeholder="Traži radnika..." value={search} onChange={e => setSearch(e.target.value)}
+            style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 12 }}
+          />
           <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
             {filteredWorkers.length === 0 && (
               <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>Nema radnika.</div>
@@ -1010,16 +1145,32 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
                   borderBottom: i < filteredWorkers.length - 1 ? "1px solid #f1f5f9" : "none", textAlign: "left"
                 }}>
                   <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{w}</span>
-                  <span style={{
-                    fontSize: 14, fontWeight: 800,
-                    color: total > 0 ? "#1e40af" : "#cbd5e1"
-                  }}>{total}h</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: total > 0 ? "#C73E3E" : "#cbd5e1" }}>{total}h</span>
                 </button>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={() => setEditModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
+            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, textAlign: "center" }}>
+              {editModal.worker} — {editModal.day}. {monthLabel}
+            </h3>
+            <input
+              autoFocus type="number" step="0.5" min="0" max="24"
+              value={editValue} onChange={e => setEditValue(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && confirmEdit()}
+              style={{ width: "100%", boxSizing: "border-box", textAlign: "center", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "16px", fontSize: 28, fontWeight: 800, outline: "none", marginBottom: 16 }}
+            />
+            <button onClick={confirmEdit} style={{ width: "100%", background: "#C73E3E", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Spremi sate</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
