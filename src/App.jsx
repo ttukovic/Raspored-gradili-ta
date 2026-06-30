@@ -824,11 +824,11 @@ function LandingScreen({ onSelect, user, onLogout }) {
 
         <button onClick={() => onSelect("raspored")} style={{
           width: "100%",
-          background: `linear-gradient(180deg, #E84444 0%, ${BRAND_RED} 55%, ${BRAND_RED_DARK} 100%)`,
+          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
           border: "none", borderRadius: 24,
           padding: "24px 22px", marginBottom: 16, cursor: "pointer", textAlign: "left",
           display: "flex", alignItems: "center", gap: 16,
-          boxShadow: `0 8px 20px ${BRAND_RED}50, inset 0 1px 0 rgba(255,255,255,0.35)`
+          boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
         }}>
           <span style={{ fontSize: 36 }}>📅</span>
           <div>
@@ -839,11 +839,11 @@ function LandingScreen({ onSelect, user, onLogout }) {
 
         <button onClick={() => onSelect("sati")} style={{
           width: "100%",
-          background: `linear-gradient(180deg, #E84444 0%, ${BRAND_RED} 55%, ${BRAND_RED_DARK} 100%)`,
+          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
           border: "none", borderRadius: 24,
           padding: "24px 22px", marginBottom: 16, cursor: "pointer", textAlign: "left",
           display: "flex", alignItems: "center", gap: 16,
-          boxShadow: `0 8px 20px ${BRAND_RED}50, inset 0 1px 0 rgba(255,255,255,0.35)`
+          boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
         }}>
           <span style={{ fontSize: 36 }}>⏱️</span>
           <div>
@@ -1158,10 +1158,10 @@ function LoginScreen({ onLogin }) {
         {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px" }}>{error}</p>}
         <button onClick={handleLogin} style={{
           width: "100%", padding: "15px 0",
-          background: `linear-gradient(180deg, #E84444 0%, ${BRAND_RED} 55%, ${BRAND_RED_DARK} 100%)`,
+          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
           border: "none", color: "#fff",
           borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginTop: 8,
-          boxShadow: `0 8px 20px ${BRAND_RED}50, inset 0 1px 0 rgba(255,255,255,0.35)`
+          boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
         }}>Prijavi se</button>
         <p style={{ textAlign: "center", fontSize: 12, color: "#cbd5e1", marginTop: 16, marginBottom: 0 }}>Kontaktiraj admina za PIN pristup.</p>
       </div>
