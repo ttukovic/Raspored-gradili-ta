@@ -449,48 +449,53 @@ function PrintModal({ sites, date, onClose, cats }) {
 
   const rightCats = cats.filter(c => c.key !== "workers");
   const contentRef = useRef(null);
-  const [scale, setScale] = useState(1);
+  const [zoom, setZoom] = useState(1);
 
-  // A4 height at 96dpi minus print margins (~277mm usable height ≈ 1046px at 96dpi)
-  const A4_USABLE_HEIGHT_PX = 1040;
+  // A4 usable height at 96dpi minus 10mm+10mm margins ≈ 1050px
+  const A4_USABLE_HEIGHT_PX = 1000;
 
   useEffect(() => {
-    const calcScale = () => {
+    const calcZoom = () => {
       if (!contentRef.current) return;
-      const contentHeight = contentRef.current.scrollHeight;
-      if (contentHeight > A4_USABLE_HEIGHT_PX) {
-        setScale(A4_USABLE_HEIGHT_PX / contentHeight);
+      // Privremeno resetiraj zoom da izmjerimo stvarnu (neskaliranu) visinu
+      contentRef.current.style.zoom = 1;
+      const naturalHeight = contentRef.current.scrollHeight;
+      if (naturalHeight > A4_USABLE_HEIGHT_PX) {
+        const z = Math.max(0.5, A4_USABLE_HEIGHT_PX / naturalHeight);
+        setZoom(z);
       } else {
-        setScale(1);
+        setZoom(1);
       }
     };
-    calcScale();
-    window.addEventListener("beforeprint", calcScale);
-    return () => window.removeEventListener("beforeprint", calcScale);
-  }, [sites]);
+    // Pričekaj da se DOM posloži prije mjerenja
+    const t = setTimeout(calcZoom, 50);
+    window.addEventListener("beforeprint", calcZoom);
+    return () => { clearTimeout(t); window.removeEventListener("beforeprint", calcZoom); };
+  }, [sites, cats]);
 
   return (
     <>
       <style>{`
-        @page { size: A4; margin: 10mm; }
+        @page { size: A4 portrait; margin: 10mm; }
         @media print {
+          html, body { height: auto !important; }
           body * { visibility: hidden; }
           #print-modal, #print-modal * { visibility: visible; }
-          #print-modal { position: absolute !important; top: 0; left: 0;
+          #print-modal {
+            position: absolute !important; top: 0 !important; left: 0 !important;
             display: block !important; width: 100% !important;
             background: white !important; box-shadow: none !important;
-            border-radius: 0 !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important;
-            overflow: visible !important; height: auto !important; }
+            border-radius: 0 !important; padding: 0 !important; margin: 0 !important;
+            max-width: 100% !important; overflow: visible !important; height: auto !important;
+          }
           .no-print { display: none !important; }
-          .print-site { page-break-inside: avoid; }
-          .print-scale-wrapper { transform-origin: top left; }
         }
       `}</style>
 
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "20px 0" }}>
         <div id="print-modal" style={{ background: "#fff", width: "100%", maxWidth: 760, borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", margin: "0 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
 
-          <div ref={contentRef} className="print-scale-wrapper" style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: scale < 1 ? `${100 / scale}%` : "100%" }}>
+          <div ref={contentRef} style={{ zoom: zoom }}>
 
           {/* Page header */}
           <div style={{ borderBottom: "3px solid #1e293b", paddingBottom: 12, marginBottom: 24 }}>
@@ -510,7 +515,7 @@ function PrintModal({ sites, date, onClose, cats }) {
           {/* Regular sites — dva stupca */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
             {regularSites.map((site) => (
-              <div key={site.id} className="print-site" style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: 12, marginBottom: 12 }}>
+              <div key={site.id} style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: 12, marginBottom: 12, breakInside: "avoid" }}>
                 {/* Naziv + crta */}
                 <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
                   {site.name}
@@ -559,14 +564,14 @@ function PrintModal({ sites, date, onClose, cats }) {
             <div style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Nema unesenih podataka za ovaj dan.</div>
           )}
 
-          {/* Permanent sites — Komin i Fali uvijek na dnu desno, samo radnici */}
-          <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end" }}>
+          {/* Permanent sites — Komin i Fali uvijek na dnu desno, samo radnici. Komin bez okvira, Fali s okvirom */}
+          <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end", breakInside: "avoid" }}>
             {permanentSites.map(site => (
-              <div key={site.id} style={
-                site.name === "Fali"
-                  ? { width: 220, border: "2px solid #1e293b", borderRadius: 8, padding: "10px 14px" }
-                  : { width: 220, padding: "10px 14px" }
-              }>
+              <div key={site.id} style={{
+                width: 220, padding: "10px 14px", boxSizing: "border-box",
+                border: site.name === "Fali" ? "2px solid #1e293b" : "2px solid transparent",
+                borderRadius: 8,
+              }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
                   {site.name}
                 </div>
@@ -579,11 +584,11 @@ function PrintModal({ sites, date, onClose, cats }) {
             ))}
           </div>
 
-          </div>{/* end print-scale-wrapper */}
-
           <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 16, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
             Generirano: {new Date().toLocaleString("hr-HR")}
           </div>
+
+          </div>{/* end zoom wrapper */}
 
           <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 20 }}>
             <button onClick={() => window.print()} style={{ flex: 1, padding: "13px 0", background: "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>🖨️ Ispiši / Spremi PDF</button>
