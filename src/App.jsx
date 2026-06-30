@@ -340,8 +340,10 @@ function PrintModal({ sites, date, onClose }) {
     <>
       <style>{`
         @media print {
-          body > * { display: none !important; }
-          #print-modal { display: block !important; position: static !important;
+          body * { visibility: hidden; }
+          #print-modal, #print-modal * { visibility: visible; }
+          #print-modal { position: absolute !important; top: 0; left: 0;
+            display: block !important; width: 100% !important;
             background: white !important; box-shadow: none !important;
             border-radius: 0 !important; padding: 20px !important; margin: 0 !important; max-width: 100% !important; }
           .no-print { display: none !important; }
