@@ -589,7 +589,7 @@ export default function App() {
 
   const addSite = () => {
     if (!newSiteName.trim()) return;
-    updateSites([...sites, { id: Date.now().toString(), name: newSiteName.trim(), workers: [], trucks: [], trailers: [], machines: [] }]);
+    updateSites([{ id: Date.now().toString(), name: newSiteName.trim(), workers: [], trucks: [], trailers: [], machines: [] }, ...sites]);
     setNewSiteName(""); setShowAddSite(false);
   };
 
