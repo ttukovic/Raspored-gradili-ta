@@ -350,11 +350,11 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
-            <MiniLogo size={26} />
+            <MiniLogo size={34} />
             <div>
               <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Upravljanje</div>
               <div style={{ fontSize: 20, fontWeight: 800 }}>Baza podataka</div>
@@ -629,7 +629,7 @@ function PrintModal({ sites, date, onClose, cats }) {
         <div style={{ background: "#fff", width: 794, maxWidth: "calc(100% - 32px)", borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
           {printableContent}
           <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button onClick={() => window.print()} style={{ flex: 1, padding: "13px 0", background: "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>🖨️ Ispiši / Spremi PDF</button>
+            <button onClick={() => window.print()} style={{ flex: 1, padding: "13px 0", background: "linear-gradient(135deg, #C73E3E, #DF5050)", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>🖨️ Ispiši / Spremi PDF</button>
             <button onClick={onClose} style={{ padding: "13px 20px", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Zatvori</button>
           </div>
         </div>
@@ -664,7 +664,7 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
     return (
       <button onClick={onToggle} style={{
         position: "fixed", top: "50%", right: 0, transform: "translateY(-50%)",
-        background: "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff",
+        background: "linear-gradient(135deg, #C73E3E, #DF5050)", color: "#fff",
         border: "none", borderRadius: "10px 0 0 10px", padding: "16px 8px",
         fontSize: 13, fontWeight: 700, cursor: "pointer", writingMode: "vertical-rl",
         boxShadow: "-2px 0 10px rgba(0,0,0,0.15)", zIndex: 500
@@ -763,10 +763,10 @@ function AnalysisScreen({ onBack }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 24px", color: "#fff" }}>
+      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 24px", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
-          <MiniLogo size={26} />
+          <MiniLogo size={34} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Admin pregled</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>📊 Analiza aktivnosti</div>
@@ -960,10 +960,10 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
-          <MiniLogo size={26} />
+          <MiniLogo size={34} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{user.name}</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>⏱️ Radni sati</div>
@@ -1051,10 +1051,10 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
-          <MiniLogo size={26} />
+          <MiniLogo size={34} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{monthLabel}</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>{worker}</div>
@@ -1479,10 +1479,10 @@ export default function App() {
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-            <MiniLogo size={26} />
+            <MiniLogo size={34} />
             <div>
               <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>
                 {user.name}{user.admin ? " 🔑" : ""} · Raspored
@@ -1600,7 +1600,7 @@ export default function App() {
         )}
         <button onClick={() => setShowPrint(true)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", cursor: "pointer" }}>🖨️ Ispiši</button>
         {!readOnly && (
-          <button onClick={() => setShowAddSite(true)} style={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)", border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>+ Gradilište</button>
+          <button onClick={() => setShowAddSite(true)} style={{ background: "linear-gradient(135deg, #C73E3E, #DF5050)", border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>+ Gradilište</button>
         )}
       </div>
 
