@@ -64,6 +64,8 @@ const makeEmptySites = () => [
 const dateKey  = (d) => `raspored-day-${d}`;
 const BAZA_KEY = `raspored-baza-v2`;
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
+const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
+const STANDARD_DAILY_HOURS = 9;
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const fmt   = (d) => d.toISOString().slice(0, 10);
@@ -769,6 +771,304 @@ function AnalysisScreen({ onBack }) {
   );
 }
 
+// ── LandingScreen ─────────────────────────────────────────────────────────────
+function LandingScreen({ user, onSelect, onLogout }) {
+  return (
+    <div style={{
+      minHeight: "100vh", background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 24
+    }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        <div style={{ textAlign: "center", marginBottom: 32, color: "#fff" }}>
+          <div style={{ fontSize: 40 }}>👋</div>
+          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8 }}>Bok, {user.name}!</div>
+          <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4 }}>Što želiš otvoriti?</div>
+        </div>
+
+        <button onClick={() => onSelect("raspored")} style={{
+          width: "100%", background: "#fff", border: "none", borderRadius: 16,
+          padding: "22px 20px", marginBottom: 14, cursor: "pointer", textAlign: "left",
+          display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+        }}>
+          <span style={{ fontSize: 32 }}>📅</span>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#1e293b" }}>Raspored gradilišta</div>
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>Dnevni raspored radnika, kamiona i strojeva</div>
+          </div>
+        </button>
+
+        <button onClick={() => onSelect("sati")} style={{
+          width: "100%", background: "#fff", border: "none", borderRadius: 16,
+          padding: "22px 20px", marginBottom: 14, cursor: "pointer", textAlign: "left",
+          display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+        }}>
+          <span style={{ fontSize: 32 }}>⏱️</span>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#1e293b" }}>Radni sati</div>
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>Mjesečno praćenje sati po radniku</div>
+          </div>
+        </button>
+
+        <button onClick={onLogout} style={{
+          width: "100%", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 12,
+          padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#fff", fontSize: 13, fontWeight: 600
+        }}>← Odjava</button>
+      </div>
+    </div>
+  );
+}
+
+// ── HoursScreen ───────────────────────────────────────────────────────────────
+function HoursScreen({ user, allWorkers, sites, onBack }) {
+  const today_ = new Date();
+  const [yearMonth, setYearMonth] = useState(
+    `${today_.getFullYear()}-${String(today_.getMonth() + 1).padStart(2, "0")}`
+  );
+  const [hoursData, setHoursData] = useState(null); // { [workerName]: { [day]: hours } }
+  const [loading, setLoading] = useState(true);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const [y, m] = yearMonth.split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const monthLabel = new Date(y, m - 1, 1).toLocaleDateString("hr-HR", { month: "long", year: "numeric" });
+
+  // ── Load hours for selected month ──
+  useEffect(() => {
+    setLoading(true);
+    storage.get(hoursKey(yearMonth)).then(res => {
+      setHoursData(res?.value ? JSON.parse(res.value) : {});
+      setLoading(false);
+    }).catch(() => { setHoursData({}); setLoading(false); });
+  }, [yearMonth]);
+
+  const saveHours = async (newData) => {
+    setHoursData(newData);
+    try { await storage.set(hoursKey(yearMonth), JSON.stringify(newData)); } catch (_) {}
+  };
+
+  // ── Get hours for a worker on a specific day ──
+  // Ako postoji ručni unos, koristi njega. Inače, ako je radnik bio na nekom gradilištu taj dan (samo za TRENUTNI dan iz sites prop-a), default 9h. Za druge dane bez unosa, 0h (treba ručno unijeti ili će ostati 0 dok se ne potvrdi).
+  const getDayHours = (workerName, day) => {
+    if (hoursData && hoursData[workerName] && hoursData[workerName][day] !== undefined) {
+      return hoursData[workerName][day];
+    }
+    return null; // nema unosa
+  };
+
+  const setDayHours = (workerName, day, value) => {
+    const nd = { ...hoursData };
+    if (!nd[workerName]) nd[workerName] = {};
+    nd[workerName] = { ...nd[workerName], [day]: value };
+    saveHours(nd);
+  };
+
+  const getMonthTotal = (workerName) => {
+    if (!hoursData || !hoursData[workerName]) return 0;
+    return Object.values(hoursData[workerName]).reduce((a, h) => a + (Number(h) || 0), 0);
+  };
+
+  const filteredWorkers = allWorkers
+    .filter(w => w.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+
+  const changeMonth = (delta) => {
+    const d = new Date(y, m - 1 + delta, 1);
+    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  if (selectedWorker) {
+    return (
+      <WorkerHoursDetail
+        worker={selectedWorker}
+        yearMonth={yearMonth}
+        monthLabel={monthLabel}
+        daysInMonth={daysInMonth}
+        getDayHours={getDayHours}
+        setDayHours={setDayHours}
+        monthTotal={getMonthTotal(selectedWorker)}
+        onBack={() => setSelectedWorker(null)}
+      />
+    );
+  }
+
+  return (
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{user.name}</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>⏱️ Radni sati</div>
+          </div>
+        </div>
+
+        {/* Month nav */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 16 }}>
+          <button onClick={() => changeMonth(-1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>‹</button>
+          <div style={{ fontSize: 16, fontWeight: 700, textTransform: "capitalize" }}>{monthLabel}</div>
+          <button onClick={() => changeMonth(1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>›</button>
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        <input
+          placeholder="Traži radnika..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 12 }}
+        />
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
+        ) : (
+          <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+            {filteredWorkers.length === 0 && (
+              <div style={{ padding: 32, textAlign: "center", color: "#94a3b8", fontSize: 14 }}>Nema radnika.</div>
+            )}
+            {filteredWorkers.map((w, i) => {
+              const total = getMonthTotal(w);
+              return (
+                <button key={w} onClick={() => setSelectedWorker(w)} style={{
+                  display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 16px", border: "none", background: "none", cursor: "pointer",
+                  borderBottom: i < filteredWorkers.length - 1 ? "1px solid #f1f5f9" : "none", textAlign: "left"
+                }}>
+                  <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{w}</span>
+                  <span style={{
+                    fontSize: 14, fontWeight: 800,
+                    color: total > 0 ? "#1e40af" : "#cbd5e1"
+                  }}>{total}h</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── WorkerHoursDetail ─────────────────────────────────────────────────────────
+function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayHours, setDayHours, monthTotal, onBack }) {
+  const [editDay, setEditDay] = useState(null);
+  const [editValue, setEditValue] = useState("");
+
+  const [y, m] = yearMonth.split("-").map(Number);
+
+  const dayLabel = (day) => {
+    const d = new Date(y, m - 1, day);
+    return d.toLocaleDateString("hr-HR", { weekday: "short" });
+  };
+
+  const isWeekend = (day) => {
+    const dow = new Date(y, m - 1, day).getDay();
+    return dow === 0 || dow === 6;
+  };
+
+  const openEdit = (day) => {
+    const current = getDayHours(worker, day);
+    setEditValue(current !== null ? String(current) : String(STANDARD_DAILY_HOURS));
+    setEditDay(day);
+  };
+
+  const confirmEdit = () => {
+    const val = parseFloat(editValue.replace(",", "."));
+    if (!isNaN(val) && val >= 0 && val <= 24) {
+      setDayHours(worker, editDay, val);
+    }
+    setEditDay(null);
+  };
+
+  const quickSet = (day, val) => {
+    setDayHours(worker, day, val);
+  };
+
+  return (
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{monthLabel}</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{worker}</div>
+          </div>
+        </div>
+        <div style={{ paddingBottom: 16 }}>
+          <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "10px 16px", display: "inline-block" }}>
+            <span style={{ fontSize: 12, opacity: 0.85 }}>Ukupno: </span>
+            <span style={{ fontSize: 18, fontWeight: 800 }}>{monthTotal}h</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+            const hours = getDayHours(worker, day);
+            const weekend = isWeekend(day);
+            return (
+              <div key={day} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "12px 16px", borderBottom: day < daysInMonth ? "1px solid #f1f5f9" : "none",
+                background: weekend ? "#f8fafc" : "#fff"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: weekend ? "#cbd5e1" : "#1e293b", minWidth: 24 }}>{day}.</span>
+                  <span style={{ fontSize: 12, color: "#94a3b8", textTransform: "capitalize" }}>{dayLabel(day)}</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button onClick={() => quickSet(day, 0)} style={{
+                    fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "1.5px solid #fecaca",
+                    background: hours === 0 ? "#ef4444" : "#fef2f2", color: hours === 0 ? "#fff" : "#ef4444",
+                    cursor: "pointer", fontWeight: 600
+                  }}>0h</button>
+                  <button onClick={() => quickSet(day, STANDARD_DAILY_HOURS)} style={{
+                    fontSize: 11, padding: "4px 8px", borderRadius: 6, border: "1.5px solid #bbf7d0",
+                    background: hours === STANDARD_DAILY_HOURS ? "#059669" : "#ecfdf5", color: hours === STANDARD_DAILY_HOURS ? "#fff" : "#059669",
+                    cursor: "pointer", fontWeight: 600
+                  }}>{STANDARD_DAILY_HOURS}h</button>
+                  <button onClick={() => openEdit(day)} style={{
+                    fontSize: 13, fontWeight: 800, padding: "5px 12px", borderRadius: 6,
+                    border: "1.5px solid #e2e8f0",
+                    background: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#eff6ff" : "#fff",
+                    color: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#1e40af" : "#94a3b8",
+                    cursor: "pointer", minWidth: 48
+                  }}>{hours !== null ? `${hours}h` : "—"}</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Edit modal */}
+      {editDay && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={() => setEditDay(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
+            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, textAlign: "center" }}>
+              {worker} — {editDay}. {monthLabel}
+            </h3>
+            <input
+              autoFocus type="number" step="0.5" min="0" max="24"
+              value={editValue} onChange={e => setEditValue(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && confirmEdit()}
+              style={{
+                width: "100%", boxSizing: "border-box", textAlign: "center",
+                border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "16px",
+                fontSize: 28, fontWeight: 800, outline: "none", marginBottom: 16
+              }}
+            />
+            <button onClick={confirmEdit} style={{
+              width: "100%", background: "#1e40af", color: "#fff", border: "none", borderRadius: 10,
+              padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer"
+            }}>Spremi sate</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── LoginScreen ───────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [selected, setSelected] = useState("");
@@ -823,7 +1123,7 @@ export default function App() {
   const [showPrint, setShowPrint] = useState(false);
   const [dragItem, setDragItem] = useState(null); // { siteId, cat, value }
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [screen, setScreen] = useState("raspored");
+  const [screen, setScreen] = useState("landing");
   const [newSiteName, setNewSiteName] = useState("");
   const pollRef = useRef(null);
   const lastLocalEditRef = useRef(0); // timestamp zadnje lokalne promjene
@@ -1064,6 +1364,14 @@ export default function App() {
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
+  if (screen === "landing") return (
+    <LandingScreen user={user} onSelect={setScreen} onLogout={() => setUser(null)} />
+  );
+
+  if (screen === "sati") return (
+    <HoursScreen user={user} allWorkers={allData.workers || []} sites={sites || []} onBack={() => setScreen("landing")} />
+  );
+
   if (screen === "baza") return (
     <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} cats={cats} isAdmin={user.admin} onAddCategory={addCategory} onDeleteCategory={deleteCategory} />
   );
@@ -1186,7 +1494,7 @@ export default function App() {
 
       {/* Bottom buttons */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(248,250,252,0.95)", backdropFilter: "blur(8px)", borderTop: "1px solid #e2e8f0", padding: "12px 16px", display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
-        <button onClick={() => setUser(null)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>← Odjava</button>
+        <button onClick={() => setScreen("landing")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>← Izbornik</button>
         <button onClick={() => setScreen("baza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e40af", cursor: "pointer" }}>📋 Baza</button>
         {user.admin && (
           <button onClick={() => setScreen("analiza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#059669", cursor: "pointer" }}>📊 Analiza</button>
