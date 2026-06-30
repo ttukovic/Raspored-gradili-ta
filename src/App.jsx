@@ -513,6 +513,97 @@ function PrintModal({ sites, date, onClose }) {
   );
 }
 
+// ── SidebarPalette ────────────────────────────────────────────────────────────
+function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem }) {
+  const [activeCat, setActiveCat] = useState("workers");
+  const [search, setSearch] = useState("");
+
+  const usedValues = new Set();
+  sites.forEach(s => (s[activeCat] || []).forEach(v => usedValues.add(v)));
+
+  const cat = CATS.find(c => c.key === activeCat);
+  const available = (allData[activeCat] || [])
+    .filter(v => !usedValues.has(v))
+    .filter(v => v.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+
+  if (!isOpen) {
+    return (
+      <button onClick={onToggle} style={{
+        position: "fixed", top: "50%", right: 0, transform: "translateY(-50%)",
+        background: "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff",
+        border: "none", borderRadius: "10px 0 0 10px", padding: "16px 8px",
+        fontSize: 13, fontWeight: 700, cursor: "pointer", writingMode: "vertical-rl",
+        boxShadow: "-2px 0 10px rgba(0,0,0,0.15)", zIndex: 500
+      }}>⬅ Brzi izbornik</button>
+    );
+  }
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, right: 0, bottom: 0, width: 200,
+      background: "#fff", boxShadow: "-4px 0 16px rgba(0,0,0,0.12)",
+      zIndex: 500, display: "flex", flexDirection: "column"
+    }}>
+      {/* Header / close */}
+      <div style={{ padding: "12px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Brzi izbornik</span>
+        <button onClick={onToggle} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: 2 }}>✕</button>
+      </div>
+
+      {/* Category tabs */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 2, padding: 8, borderBottom: "1px solid #f1f5f9" }}>
+        {CATS.map(c => (
+          <button key={c.key} onClick={() => { setActiveCat(c.key); setSearch(""); }} style={{
+            flex: "1 0 45%", padding: "6px 4px", border: "none", borderRadius: 6,
+            fontSize: 10, fontWeight: 700, cursor: "pointer",
+            background: activeCat === c.key ? c.color : "#f1f5f9",
+            color: activeCat === c.key ? "#fff" : "#64748b"
+          }}>{c.icon} {c.label}</button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div style={{ padding: 8 }}>
+        <input
+          placeholder="Traži..." value={search} onChange={e => setSearch(e.target.value)}
+          style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none" }}
+        />
+      </div>
+
+      {/* List */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "4px 8px" }}>
+        {available.length === 0 && (
+          <div style={{ textAlign: "center", color: "#cbd5e1", fontSize: 11, padding: 20 }}>
+            {search ? "Nema rezultata" : "Sve je raspoređeno"}
+          </div>
+        )}
+        {available.map(val => (
+          <div
+            key={val}
+            draggable
+            onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStartItem("sidebar", activeCat, val); }}
+            onDragEnd={onDragEndItem}
+            style={{
+              background: cat.bg, border: `1.5px solid ${cat.border}`, borderRadius: 6,
+              padding: "6px 8px", marginBottom: 4, fontSize: 12, fontWeight: 600,
+              color: cat.color, cursor: "grab", whiteSpace: "nowrap", overflow: "hidden",
+              textOverflow: "ellipsis",
+              opacity: dragItem && dragItem.siteId === "sidebar" && dragItem.value === val ? 0.4 : 1
+            }}
+          >
+            {val}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ padding: "8px 10px", borderTop: "1px solid #f1f5f9", fontSize: 10, color: "#cbd5e1", textAlign: "center" }}>
+        Povuci na gradilište lijevo
+      </div>
+    </div>
+  );
+}
+
 // ── AnalysisScreen ────────────────────────────────────────────────────────────
 function AnalysisScreen({ onBack }) {
   const [log, setLog] = useState(null);
@@ -643,6 +734,7 @@ export default function App() {
   const [showAddSite, setShowAddSite] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [dragItem, setDragItem] = useState(null); // { siteId, cat, value }
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [screen, setScreen] = useState("raspored");
   const [newSiteName, setNewSiteName] = useState("");
   const pollRef = useRef(null);
@@ -771,11 +863,25 @@ export default function App() {
   };
   const updateSite = (updated) => updateSites(sites.map(s => s.id === updated.id ? updated : s));
 
-  // ── Drag & drop premještanje između gradilišta ──
-  const handleDragStartItem = (siteId, cat, value) => setDragItem({ siteId, cat, value });
+  // ── Drag & drop premještanje između gradilišta (i iz bočne palete baze) ──
+  const handleDragStartItem = (siteId, cat, value) => setDragItem({ siteId, cat, value }); // siteId === "sidebar" za stavke iz baze
   const handleDragEndItem = () => setDragItem(null);
   const handleDropItem = (targetSiteId, cat) => {
-    if (!dragItem || dragItem.cat !== cat || dragItem.siteId === targetSiteId) { setDragItem(null); return; }
+    if (!dragItem || dragItem.cat !== cat) { setDragItem(null); return; }
+
+    if (dragItem.siteId === "sidebar") {
+      // Iz bočne palete — samo dodaj na ciljano gradilište, provjeri da već nije igdje drugdje
+      const usedElsewhere = sites.some(s => (s[cat] || []).includes(dragItem.value));
+      if (usedElsewhere) { setDragItem(null); return; }
+      const newSites = sites.map(s =>
+        s.id === targetSiteId ? { ...s, [cat]: [...s[cat], dragItem.value] } : s
+      );
+      updateSites(newSites);
+      setDragItem(null);
+      return;
+    }
+
+    if (dragItem.siteId === targetSiteId) { setDragItem(null); return; }
     const newSites = sites.map(s => {
       if (s.id === dragItem.siteId) {
         return { ...s, [cat]: s[cat].filter(v => v !== dragItem.value) };
@@ -892,7 +998,7 @@ export default function App() {
           .sites-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-      <div style={{ padding: "16px 16px 110px" }}>
+      <div style={{ padding: `16px ${sidebarOpen ? 216 : 16}px 110px 16px`, transition: "padding 0.2s" }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
         ) : (
@@ -909,6 +1015,17 @@ export default function App() {
           </div>
         )}
       </div>
+
+      {/* Bočna paleta — brzi izbornik baze */}
+      {!readOnly && (
+        <SidebarPalette
+          allData={allData} sites={sites || []}
+          isOpen={sidebarOpen} onToggle={() => setSidebarOpen(o => !o)}
+          dragItem={dragItem}
+          onDragStartItem={handleDragStartItem}
+          onDragEndItem={handleDragEndItem}
+        />
+      )}
 
       {/* Add site sheet */}
       {showAddSite && (
