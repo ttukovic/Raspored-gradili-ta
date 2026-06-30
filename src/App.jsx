@@ -51,11 +51,7 @@ const initialTrucks    = ["TGS","3349","K48","K27","Suz 1841","Suz 823","Suz 783
 const initialTrailers  = []; // korisnik dodaje
 const initialMachines  = []; // korisnik dodaje
 
-const siteNames = [
-  "KŽ — Marđan Marković","UŽ Procces","UŽ Nazorova","UŽ Opatija",
-  "Rasovičće","Primu Zagorje","N.40","Rancec","Zelina","Relina",
-  "Slubica","Dejinić","Tuhelj",
-];
+const siteNames = []; // novi dan kreće prazan — inženjer sam dodaje gradilišta
 const PERMANENT_SITES = ["Komin", "Fali"]; // uvijek vidljive, uvijek na dnu
 
 const makeEmptySites = () => [
