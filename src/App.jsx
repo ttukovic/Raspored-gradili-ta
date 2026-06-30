@@ -1060,7 +1060,7 @@ export default function App() {
   })();
 
   // Fali se ne računa u brojač — samo radnici koji su na gradilištima
-  const totals = cats.map(c => sites ? sites.filter(s => s.name !== "Fali").reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
+  const totals = cats.map(c => sites ? sites.reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
