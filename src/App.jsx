@@ -457,7 +457,7 @@ function PrintModal({ sites, date, onClose, cats }) {
     const SITE_HEADER_PX = 26; // naziv gradilišta + linija + razmak
     const ROW_PX = 16.5;       // jedan red (radnik/kamion/...)
     const SITE_GAP_PX = 12;    // razmak između kartica
-    const FOOTER_PX = 40;      // "Generirano: ..." + razmak
+    const FOOTER_PX = 8; // mali sigurnosni razmak na dnu
 
     // Za svako gradilište, broj redaka = max(broj radnika, broj svih ostalih stavki zajedno)
     const siteHeights = regularSites.map(site => {
@@ -560,10 +560,6 @@ function PrintModal({ sites, date, onClose, cats }) {
             </div>
           </div>
         ))}
-      </div>
-
-      <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 16, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-        Generirano: {new Date().toLocaleString("hr-HR")}
       </div>
     </div>
   );
