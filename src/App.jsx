@@ -89,14 +89,20 @@ const ENGINEERS = [
 ];
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
-function Badge({ label, color, onRemove, warn }) {
+function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 3,
-      background: warn ? "#ef4444" : color,
-      borderRadius: 6, padding: "2px 8px",
-      fontSize: 12, fontWeight: 600, color: "#fff", margin: "2px", whiteSpace: "nowrap"
-    }}>
+    <span
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 3,
+        background: warn ? "#ef4444" : color,
+        borderRadius: 6, padding: "2px 8px",
+        fontSize: 12, fontWeight: 600, color: "#fff", margin: "2px", whiteSpace: "nowrap",
+        cursor: draggable ? "grab" : "default",
+        opacity: isDragging ? 0.4 : 1,
+      }}>
       {warn && "⚠️ "}{label}
       {onRemove && (
         <button onClick={onRemove} style={{
@@ -172,8 +178,9 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 }
 
 // ── SiteCard ──────────────────────────────────────────────────────────────────
-function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly }) {
+function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem }) {
   const [modal, setModal] = useState(null); // cat key or null
+  const [dragOverCat, setDragOverCat] = useState(null); // koja kategorija je trenutno "meta" za drop
 
   const addItem = (cat, val) => {
     if (!site[cat].includes(val)) onUpdate({ ...site, [cat]: [...site[cat], val] });
@@ -192,26 +199,50 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
         {!readOnly && !site.permanent && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>🗑</button>}
       </div>
 
-      {CATS.filter(cat => !site.permanent || cat.key === "workers").map(cat => (
-        <div key={cat.key} style={{ marginBottom: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
-            {cat.icon} {cat.label}
+      {CATS.filter(cat => !site.permanent || cat.key === "workers").map(cat => {
+        const isDropTarget = dragItem && dragItem.cat === cat.key && dragItem.siteId !== site.id;
+        const isDragOver = dragOverCat === cat.key;
+        return (
+          <div
+            key={cat.key}
+            onDragOver={(e) => { if (isDropTarget) { e.preventDefault(); setDragOverCat(cat.key); } }}
+            onDragLeave={() => setDragOverCat(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOverCat(null);
+              if (isDropTarget) onDropItem(site.id, cat.key);
+            }}
+            style={{
+              marginBottom: 8, borderRadius: 8, transition: "background 0.15s",
+              background: isDropTarget && isDragOver ? "#dbeafe" : "transparent",
+              outline: isDropTarget && isDragOver ? "2px dashed #3b82f6" : "none",
+              padding: isDropTarget ? 4 : 0,
+            }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
+              {cat.icon} {cat.label}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", minHeight: 28 }}>
+              {(site[cat.key] || []).map(val => (
+                <Badge key={val} label={val} color={cat.color}
+                  warn={cat.key === "workers" && duplicateWorkers.has(val)}
+                  onRemove={readOnly ? null : () => removeItem(cat.key, val)}
+                  draggable={!readOnly}
+                  isDragging={dragItem && dragItem.value === val && dragItem.siteId === site.id && dragItem.cat === cat.key}
+                  onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStartItem(site.id, cat.key, val); }}
+                  onDragEnd={() => onDragEndItem()}
+                />
+              ))}
+              {!readOnly && (
+                <button onClick={() => setModal(cat.key)} style={{
+                  background: cat.bg, border: `1.5px dashed ${cat.border}`, borderRadius: 6,
+                  color: cat.color, fontSize: 12, fontWeight: 600, padding: "2px 10px", cursor: "pointer", margin: "2px"
+                }}>+ {cat.label.slice(0, -1) === "Radnic" ? "Radnik" : cat.label.replace(/i$/, "")}</button>
+              )}
+            </div>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap" }}>
-            {(site[cat.key] || []).map(val => (
-              <Badge key={val} label={val} color={cat.color}
-                warn={cat.key === "workers" && duplicateWorkers.has(val)}
-                onRemove={readOnly ? null : () => removeItem(cat.key, val)} />
-            ))}
-            {!readOnly && (
-              <button onClick={() => setModal(cat.key)} style={{
-                background: cat.bg, border: `1.5px dashed ${cat.border}`, borderRadius: 6,
-                color: cat.color, fontSize: 12, fontWeight: 600, padding: "2px 10px", cursor: "pointer", margin: "2px"
-              }}>+ {cat.label.slice(0, -1) === "Radnic" ? "Radnik" : cat.label.replace(/i$/, "")}</button>
-            )}
-          </div>
-        </div>
-      ))}
+        );
+      })}
 
       {modal && (
         <BottomSheet
@@ -532,6 +563,7 @@ export default function App() {
   const [lastEditor, setLastEditor] = useState(null);
   const [showAddSite, setShowAddSite] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [dragItem, setDragItem] = useState(null); // { siteId, cat, value }
   const [screen, setScreen] = useState("raspored");
   const [newSiteName, setNewSiteName] = useState("");
   const pollRef = useRef(null);
@@ -641,6 +673,25 @@ export default function App() {
     save(newSites);
   };
   const updateSite = (updated) => updateSites(sites.map(s => s.id === updated.id ? updated : s));
+
+  // ── Drag & drop premještanje između gradilišta ──
+  const handleDragStartItem = (siteId, cat, value) => setDragItem({ siteId, cat, value });
+  const handleDragEndItem = () => setDragItem(null);
+  const handleDropItem = (targetSiteId, cat) => {
+    if (!dragItem || dragItem.cat !== cat || dragItem.siteId === targetSiteId) { setDragItem(null); return; }
+    const newSites = sites.map(s => {
+      if (s.id === dragItem.siteId) {
+        return { ...s, [cat]: s[cat].filter(v => v !== dragItem.value) };
+      }
+      if (s.id === targetSiteId) {
+        if (s[cat].includes(dragItem.value)) return s; // već postoji, ne dupliciraj
+        return { ...s, [cat]: [...s[cat], dragItem.value] };
+      }
+      return s;
+    });
+    updateSites(newSites);
+    setDragItem(null);
+  };
   const deleteSite = (id) => updateSites(sites.filter(s => s.id !== id));
 
   const updateBazaCat = (cat, vals) => {
@@ -750,7 +801,9 @@ export default function App() {
               .map(site => (
                 <SiteCard key={site.id} site={site} allSites={sites} allData={allData}
                   duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
-                  onDelete={() => deleteSite(site.id)} readOnly={readOnly} />
+                  onDelete={() => deleteSite(site.id)} readOnly={readOnly}
+                  dragItem={dragItem} onDragStartItem={handleDragStartItem}
+                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} />
               ))}
           </div>
         )}
