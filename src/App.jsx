@@ -71,11 +71,23 @@ const addDays = (dateStr, n) => { const d = new Date(dateStr); d.setDate(d.getDa
 const hrDate  = (dateStr) => new Date(dateStr + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
 // ── Category config ───────────────────────────────────────────────────────────
-const CATS = [
+const DEFAULT_CATS = [
   { key: "workers",  label: "Radnici",   icon: "👷", color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
   { key: "trucks",   label: "Kamioni",   icon: "🚛", color: "#f97316", bg: "#fff7ed", border: "#f97316" },
   { key: "trailers", label: "Prikolice", icon: "🚜", color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
   { key: "machines", label: "Strojevi",  icon: "⚙️", color: "#059669", bg: "#ecfdf5", border: "#059669" },
+];
+const CATS_KEY = `raspored-categories`;
+// Paleta boja za nove kategorije koje admin doda
+const CAT_COLOR_PALETTE = [
+  { color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
+  { color: "#f97316", bg: "#fff7ed", border: "#f97316" },
+  { color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
+  { color: "#059669", bg: "#ecfdf5", border: "#059669" },
+  { color: "#dc2626", bg: "#fef2f2", border: "#dc2626" },
+  { color: "#0891b2", bg: "#ecfeff", border: "#0891b2" },
+  { color: "#ca8a04", bg: "#fefce8", border: "#ca8a04" },
+  { color: "#db2777", bg: "#fdf2f8", border: "#db2777" },
 ];
 
 // ── Engineers ─────────────────────────────────────────────────────────────────
@@ -179,7 +191,7 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 }
 
 // ── SiteCard ──────────────────────────────────────────────────────────────────
-function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem }) {
+function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats }) {
   const [modal, setModal] = useState(null); // cat key or null
   const [dragOverCat, setDragOverCat] = useState(null); // koja kategorija je trenutno "meta" za drop
 
@@ -188,7 +200,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
   };
   const removeItem = (cat, val) => onUpdate({ ...site, [cat]: site[cat].filter(x => x !== val) });
 
-  const hasAny = CATS.some(c => site[c.key]?.length > 0);
+  const hasAny = cats.some(c => site[c.key]?.length > 0);
 
   return (
     <div style={{
@@ -200,7 +212,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
         {!readOnly && !site.permanent && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>🗑</button>}
       </div>
 
-      {CATS.filter(cat => !site.permanent || cat.key === "workers").map(cat => {
+      {cats.filter(cat => !site.permanent || cat.key === "workers").map(cat => {
         const isDropTarget = dragItem && dragItem.cat === cat.key && dragItem.siteId !== site.id;
         const isDragOver = dragOverCat === cat.key;
         return (
@@ -247,7 +259,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
 
       {modal && (
         <BottomSheet
-          title={`Dodaj ${CATS.find(c => c.key === modal)?.label.toLowerCase().replace(/i$/, "")}`}
+          title={`Dodaj ${cats.find(c => c.key === modal)?.label.toLowerCase().replace(/i$/, "")}`}
           options={(allData[modal] || []).filter(v => {
               // Already on THIS site — hide
               if ((site[modal] || []).includes(v)) return false;
@@ -265,13 +277,17 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
 }
 
 // ── BazaScreen ────────────────────────────────────────────────────────────────
-function BazaScreen({ allData, onUpdate, onBack }) {
+function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, onDeleteCategory }) {
   const [tab, setTab] = useState("workers");
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [showAddCat, setShowAddCat] = useState(false);
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [newCatIcon, setNewCatIcon] = useState("🔧");
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState(null);
 
-  const cat = CATS.find(c => c.key === tab);
+  const cat = cats.find(c => c.key === tab) || cats[0];
   const items = allData[tab] || [];
   const sortedItems = [...items].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
   const filtered = sortedItems.filter(i => i.toLowerCase().includes(search.toLowerCase()));
@@ -289,20 +305,41 @@ function BazaScreen({ allData, onUpdate, onBack }) {
     setConfirmDelete(null);
   };
 
-  const placeholder = { workers: "Ime radnika...", trucks: "Oznaka kamiona...", trailers: "Oznaka prikolice...", machines: "Naziv stroja..." };
+  const handleAddCategory = () => {
+    const label = newCatLabel.trim();
+    if (!label) return;
+    onAddCategory(label, newCatIcon.trim() || "🔧");
+    setNewCatLabel("");
+    setNewCatIcon("🔧");
+    setShowAddCat(false);
+  };
+
+  const handleDeleteCategory = (key) => {
+    onDeleteCategory(key);
+    if (tab === key) setTab(cats.find(c => c.key !== key)?.key || "workers");
+    setConfirmDeleteCat(null);
+  };
+
+  const placeholder = `Naziv stavke (${cat?.label?.toLowerCase()})...`;
+  const PROTECTED_KEYS = ["workers", "trucks", "trailers", "machines"]; // ne mogu se brisati
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
       <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
-          <div>
-            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Upravljanje</div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>Baza podataka</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+            <div>
+              <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Upravljanje</div>
+              <div style={{ fontSize: 20, fontWeight: 800 }}>Baza podataka</div>
+            </div>
           </div>
+          {isAdmin && (
+            <button onClick={() => setShowAddCat(true)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Izbornik</button>
+          )}
         </div>
         <div style={{ display: "flex", gap: 3, overflowX: "auto" }}>
-          {CATS.map(c => (
+          {cats.map(c => (
             <button key={c.key} onClick={() => { setTab(c.key); setSearch(""); setNewName(""); }} style={{
               flex: "0 0 auto", padding: "8px 12px", border: "none", borderRadius: "8px 8px 0 0",
               fontSize: 12, fontWeight: 700, cursor: "pointer",
@@ -314,8 +351,16 @@ function BazaScreen({ allData, onUpdate, onBack }) {
       </div>
 
       <div style={{ padding: 16 }}>
+        {isAdmin && !PROTECTED_KEYS.includes(tab) && (
+          <button onClick={() => setConfirmDeleteCat(tab)} style={{
+            background: "#fef2f2", border: "1.5px solid #fecaca", color: "#dc2626",
+            borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 600,
+            cursor: "pointer", marginBottom: 12, display: "block"
+          }}>🗑️ Obriši cijeli izbornik "{cat?.label}"</button>
+        )}
+
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input placeholder={placeholder[tab]} value={newName} onChange={e => setNewName(e.target.value)}
+          <input placeholder={placeholder} value={newName} onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === "Enter" && addItem()}
             style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "11px 14px", fontSize: 15, outline: "none" }} />
           <button onClick={addItem} style={{ background: "#1e40af", color: "#fff", border: "none", borderRadius: 10, padding: "11px 18px", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>+ Dodaj</button>
@@ -339,6 +384,7 @@ function BazaScreen({ allData, onUpdate, onBack }) {
         <div style={{ textAlign: "center", fontSize: 12, color: "#cbd5e1", marginTop: 12 }}>Ukupno: {items.length}</div>
       </div>
 
+      {/* Delete item confirm */}
       {confirmDelete && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={() => setConfirmDelete(null)}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
@@ -355,17 +401,53 @@ function BazaScreen({ allData, onUpdate, onBack }) {
           </div>
         </div>
       )}
+
+      {/* Add category sheet */}
+      {showAddCat && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={() => setShowAddCat(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
+            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>Novi izbornik</h3>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Naziv (npr. Alati)</label>
+            <input autoFocus value={newCatLabel} onChange={e => setNewCatLabel(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAddCategory()}
+              placeholder="Alati" style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "11px 14px", fontSize: 15, outline: "none", marginBottom: 14 }} />
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Emoji ikona</label>
+            <input value={newCatIcon} onChange={e => setNewCatIcon(e.target.value)}
+              placeholder="🔧" style={{ width: 80, boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "11px 14px", fontSize: 20, outline: "none", marginBottom: 18, textAlign: "center" }} />
+            <button onClick={handleAddCategory} style={{ background: "#1e40af", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", width: "100%", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Dodaj izbornik</button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete category confirm */}
+      {confirmDeleteCat && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={() => setConfirmDeleteCat(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
+            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: "#1e293b" }}>Obriši izbornik "{cats.find(c => c.key === confirmDeleteCat)?.label}"?</div>
+              <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Ovo briše cijeli izbornik i sve njegove stavke sa svih gradilišta. Ne može se poništiti.</div>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setConfirmDeleteCat(null)} style={{ flex: 1, padding: "13px 0", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Odustani</button>
+              <button onClick={() => handleDeleteCategory(confirmDeleteCat)} style={{ flex: 1, padding: "13px 0", background: "#ef4444", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Da, obriši sve</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ── PrintModal ────────────────────────────────────────────────────────────────
-function PrintModal({ sites, date, onClose }) {
-  const regularSites = sites.filter(s => !s.permanent && CATS.some(c => (s[c.key] || []).length > 0));
+function PrintModal({ sites, date, onClose, cats }) {
+  const regularSites = sites.filter(s => !s.permanent && cats.some(c => (s[c.key] || []).length > 0));
   const permanentSites = sites.filter(s => s.permanent);
   const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
-  const rightCats = CATS.filter(c => c.key !== "workers");
+  const rightCats = cats.filter(c => c.key !== "workers");
   const contentRef = useRef(null);
   const [scale, setScale] = useState(1);
 
@@ -418,7 +500,7 @@ function PrintModal({ sites, date, onClose }) {
                 <div style={{ fontSize: 24, fontWeight: 900, color: "#1e293b" }}>{dateLabel}</div>
               </div>
               <div style={{ textAlign: "right", fontSize: 11, color: "#64748b", lineHeight: 2 }}>
-                {CATS.map(c => (
+                {cats.map(c => (
                   <div key={c.key}>{c.icon} {c.label}: <strong style={{ color: "#1e293b" }}>{sites.reduce((a, s) => a + (s[c.key] || []).length, 0)}</strong></div>
                 ))}
               </div>
@@ -514,14 +596,14 @@ function PrintModal({ sites, date, onClose }) {
 }
 
 // ── SidebarPalette ────────────────────────────────────────────────────────────
-function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem }) {
+function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem, cats }) {
   const [activeCat, setActiveCat] = useState("workers");
   const [search, setSearch] = useState("");
 
   const usedValues = new Set();
   sites.forEach(s => (s[activeCat] || []).forEach(v => usedValues.add(v)));
 
-  const cat = CATS.find(c => c.key === activeCat);
+  const cat = cats.find(c => c.key === activeCat);
   const available = (allData[activeCat] || [])
     .filter(v => !usedValues.has(v))
     .filter(v => v.toLowerCase().includes(search.toLowerCase()))
@@ -553,7 +635,7 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
 
       {/* Category tabs */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 2, padding: 8, borderBottom: "1px solid #f1f5f9" }}>
-        {CATS.map(c => (
+        {cats.map(c => (
           <button key={c.key} onClick={() => { setActiveCat(c.key); setSearch(""); }} style={{
             flex: "1 0 45%", padding: "6px 4px", border: "none", borderRadius: 6,
             fontSize: 10, fontWeight: 700, cursor: "pointer",
@@ -728,6 +810,7 @@ export default function App() {
     workers: initialWorkers, trucks: initialTrucks,
     trailers: initialTrailers, machines: initialMachines,
   });
+  const [cats, setCats] = useState(DEFAULT_CATS);
   const [loading, setLoading] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [lastEditor, setLastEditor] = useState(null);
@@ -751,12 +834,15 @@ export default function App() {
       const res = await storage.get(dateKey(dateStr), true);
       if (res?.value) {
         const data = JSON.parse(res.value);
-        let migratedSites = (data.sites || makeEmptySites()).map(s => ({
-          ...s, trailers: s.trailers || [], machines: s.machines || []
-        }));
+        let migratedSites = (data.sites || makeEmptySites()).map(s => {
+          const ns = { ...s };
+          cats.forEach(c => { if (!ns[c.key]) ns[c.key] = []; }); // osiguraj sve trenutne kategorije
+          return ns;
+        });
         PERMANENT_SITES.forEach(name => {
           if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
-            migratedSites.push({ id: `permanent-${name}`, name, workers: [], trucks: [], trailers: [], machines: [], permanent: true });
+            const emptyCatFields = Object.fromEntries(cats.map(c => [c.key, []]));
+            migratedSites.push({ id: `permanent-${name}`, name, ...emptyCatFields, permanent: true });
           }
         });
         migratedSites = migratedSites.map(s =>
@@ -770,7 +856,7 @@ export default function App() {
       }
     } catch (_) { setSites(makeEmptySites()); }
     setLoading(false);
-  }, []);
+  }, [cats]);
 
   // ── Silent refresh (background poll — no loading flicker, skips if user just edited) ──
   const silentRefresh = useCallback(async (dateStr) => {
@@ -780,12 +866,15 @@ export default function App() {
       const res = await storage.get(dateKey(dateStr), true);
       if (res?.value) {
         const data = JSON.parse(res.value);
-        let migratedSites = (data.sites || makeEmptySites()).map(s => ({
-          ...s, trailers: s.trailers || [], machines: s.machines || []
-        }));
+        let migratedSites = (data.sites || makeEmptySites()).map(s => {
+          const ns = { ...s };
+          cats.forEach(c => { if (!ns[c.key]) ns[c.key] = []; }); // osiguraj sve trenutne kategorije
+          return ns;
+        });
         PERMANENT_SITES.forEach(name => {
           if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
-            migratedSites.push({ id: `permanent-${name}`, name, workers: [], trucks: [], trailers: [], machines: [], permanent: true });
+            const emptyCatFields = Object.fromEntries(cats.map(c => [c.key, []]));
+            migratedSites.push({ id: `permanent-${name}`, name, ...emptyCatFields, permanent: true });
           }
         });
         migratedSites = migratedSites.map(s =>
@@ -795,20 +884,21 @@ export default function App() {
         setLastEditor(data.lastEditor || null);
       }
     } catch (_) {}
-  }, []);
+  }, [cats]);
 
-  // ── Load baza on mount ──
+  // ── Load kategorije i baza on mount ──
   useEffect(() => {
     if (!user) return;
+    storage.get(CATS_KEY).then(res => {
+      if (res?.value) {
+        const customCats = JSON.parse(res.value);
+        if (Array.isArray(customCats) && customCats.length > 0) setCats(customCats);
+      }
+    }).catch(() => {});
     storage.get(BAZA_KEY).then(res => {
       if (res?.value) {
         const b = JSON.parse(res.value);
-        setAllData(prev => ({
-          workers:  b.workers  || prev.workers,
-          trucks:   b.trucks   || prev.trucks,
-          trailers: b.trailers || prev.trailers,
-          machines: b.machines || prev.machines,
-        }));
+        setAllData(prev => ({ ...prev, ...b })); // dinamički merge svih kategorija, ne samo fiksnih 4
       }
     }).catch(() => {});
     loadDay(currentDate);
@@ -903,9 +993,57 @@ export default function App() {
     saveBaza(nd);
   };
 
+  // ── Upravljanje izbornicima (kategorijama) — samo admin ──
+  const saveCats = async (newCats) => {
+    setCats(newCats);
+    try {
+      await storage.set(CATS_KEY, JSON.stringify(newCats));
+      logActivity(user.name);
+    } catch (_) {}
+  };
+
+  const addCategory = (label, icon) => {
+    const key = "cat_" + label.toLowerCase()
+      .replace(/[čć]/g, "c").replace(/š/g, "s").replace(/ž/g, "z").replace(/đ/g, "dj")
+      .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") + "_" + Date.now().toString(36);
+    const colorIdx = cats.length % CAT_COLOR_PALETTE.length;
+    const newCat = { key, label, icon, ...CAT_COLOR_PALETTE[colorIdx] };
+    const newCats = [...cats, newCat];
+    saveCats(newCats);
+    // Inicijaliziraj praznu listu za novu kategoriju u bazi
+    const nd = { ...allData, [key]: [] };
+    setAllData(nd);
+    saveBaza(nd);
+    // Dodaj prazno polje na sva postojeća gradilišta
+    if (sites) {
+      const newSites = sites.map(s => ({ ...s, [key]: [] }));
+      updateSites(newSites);
+    }
+  };
+
+  const deleteCategory = (key) => {
+    const newCats = cats.filter(c => c.key !== key);
+    saveCats(newCats);
+    // Ukloni iz baze
+    const nd = { ...allData };
+    delete nd[key];
+    setAllData(nd);
+    saveBaza(nd);
+    // Ukloni sa svih gradilišta
+    if (sites) {
+      const newSites = sites.map(s => {
+        const ns = { ...s };
+        delete ns[key];
+        return ns;
+      });
+      updateSites(newSites);
+    }
+  };
+
   const addSite = () => {
     if (!newSiteName.trim()) return;
-    updateSites([{ id: Date.now().toString(), name: newSiteName.trim(), workers: [], trucks: [], trailers: [], machines: [] }, ...sites]);
+    const emptyCatFields = Object.fromEntries(cats.map(c => [c.key, []]));
+    updateSites([{ id: Date.now().toString(), name: newSiteName.trim(), ...emptyCatFields }, ...sites]);
     setNewSiteName(""); setShowAddSite(false);
   };
 
@@ -917,12 +1055,12 @@ export default function App() {
   })();
 
   // Fali se ne računa u brojač — samo radnici koji su na gradilištima
-  const totals = CATS.map(c => sites ? sites.filter(s => s.name !== "Fali").reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
+  const totals = cats.map(c => sites ? sites.filter(s => s.name !== "Fali").reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
   if (screen === "baza") return (
-    <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} />
+    <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} cats={cats} isAdmin={user.admin} onAddCategory={addCategory} onDeleteCategory={deleteCategory} />
   );
 
   if (screen === "analiza" && user.admin) return (
@@ -948,7 +1086,7 @@ export default function App() {
           </div>
           {/* Totals */}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", maxWidth: 160 }}>
-            {CATS.map((c, i) => (
+            {cats.map((c, i) => (
               <div key={c.key} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "5px 10px", textAlign: "center", minWidth: 44 }}>
                 <div style={{ fontSize: 16, fontWeight: 800 }}>{totals[i]}</div>
                 <div style={{ fontSize: 9, opacity: 0.85 }}>{c.icon}</div>
@@ -1010,7 +1148,7 @@ export default function App() {
                   duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
                   onDelete={() => deleteSite(site.id)} readOnly={readOnly}
                   dragItem={dragItem} onDragStartItem={handleDragStartItem}
-                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} />
+                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} />
               ))}
           </div>
         )}
@@ -1024,6 +1162,7 @@ export default function App() {
           dragItem={dragItem}
           onDragStartItem={handleDragStartItem}
           onDragEndItem={handleDragEndItem}
+          cats={cats}
         />
       )}
 
@@ -1053,7 +1192,7 @@ export default function App() {
         )}
       </div>
 
-      {showPrint && sites && <PrintModal sites={sites} date={currentDate} onClose={() => setShowPrint(false)} />}
+      {showPrint && sites && <PrintModal sites={sites} date={currentDate} onClose={() => setShowPrint(false)} cats={cats} />}
     </div>
   );
 }
