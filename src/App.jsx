@@ -111,7 +111,8 @@ function Badge({ label, color, onRemove, warn }) {
 // ── BottomSheet ───────────────────────────────────────────────────────────────
 function BottomSheet({ title, options, onAdd, onClose }) {
   const [search, setSearch] = useState("");
-  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+  const sorted = [...options].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+  const filtered = sorted.filter(o => o.toLowerCase().includes(search.toLowerCase()));
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 1000 }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
@@ -212,14 +213,13 @@ function BazaScreen({ allData, onUpdate, onBack }) {
 
   const cat = CATS.find(c => c.key === tab);
   const items = allData[tab] || [];
-  const filtered = items.filter(i => i.toLowerCase().includes(search.toLowerCase()));
+  const sortedItems = [...items].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+  const filtered = sortedItems.filter(i => i.toLowerCase().includes(search.toLowerCase()));
 
   const addItem = () => {
     const name = newName.trim();
     if (!name || items.includes(name)) return;
-    const updated = tab === "workers"
-      ? [...items, name].sort((a, b) => a.localeCompare(b, "hr"))
-      : [...items, name];
+    const updated = [...items, name].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
     onUpdate(tab, updated);
     setNewName("");
   };
