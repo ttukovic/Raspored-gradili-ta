@@ -454,24 +454,33 @@ function PrintModal({ sites, date, onClose, cats }) {
   // A4 usable height at 96dpi minus 10mm+10mm margins ≈ 1050px
   const A4_USABLE_HEIGHT_PX = 1000;
 
+  const calcZoom = useCallback(() => {
+    if (!contentRef.current) return;
+    contentRef.current.style.zoom = 1;
+    // Dvostruki rAF — pričekaj da browser stvarno presloži layout prije mjerenja
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!contentRef.current) return;
+        const naturalHeight = contentRef.current.scrollHeight;
+        if (naturalHeight > A4_USABLE_HEIGHT_PX) {
+          const z = Math.max(0.4, A4_USABLE_HEIGHT_PX / naturalHeight);
+          setZoom(z);
+        } else {
+          setZoom(1);
+        }
+      });
+    });
+  }, []);
+
   useEffect(() => {
-    const calcZoom = () => {
-      if (!contentRef.current) return;
-      // Privremeno resetiraj zoom da izmjerimo stvarnu (neskaliranu) visinu
-      contentRef.current.style.zoom = 1;
-      const naturalHeight = contentRef.current.scrollHeight;
-      if (naturalHeight > A4_USABLE_HEIGHT_PX) {
-        const z = Math.max(0.5, A4_USABLE_HEIGHT_PX / naturalHeight);
-        setZoom(z);
-      } else {
-        setZoom(1);
-      }
-    };
-    // Pričekaj da se DOM posloži prije mjerenja
-    const t = setTimeout(calcZoom, 50);
-    window.addEventListener("beforeprint", calcZoom);
-    return () => { clearTimeout(t); window.removeEventListener("beforeprint", calcZoom); };
-  }, [sites, cats]);
+    calcZoom();
+    // Mjeri i točno prije fizičkog ispisa (kad preglednik primijeni print CSS, širina se mijenja)
+    const mql = window.matchMedia ? window.matchMedia("print") : null;
+    const handleBeforePrint = () => calcZoom();
+    window.addEventListener("beforeprint", handleBeforePrint);
+    if (mql && mql.addEventListener) mql.addEventListener("change", (e) => { if (e.matches) calcZoom(); });
+    return () => window.removeEventListener("beforeprint", handleBeforePrint);
+  }, [sites, cats, calcZoom]);
 
   return (
     <>
@@ -483,17 +492,17 @@ function PrintModal({ sites, date, onClose, cats }) {
           #print-modal, #print-modal * { visibility: visible; }
           #print-modal {
             position: absolute !important; top: 0 !important; left: 0 !important;
-            display: block !important; width: 100% !important;
+            display: block !important; width: 794px !important;
             background: white !important; box-shadow: none !important;
             border-radius: 0 !important; padding: 0 !important; margin: 0 !important;
-            max-width: 100% !important; overflow: visible !important; height: auto !important;
+            max-width: 794px !important; overflow: visible !important; height: auto !important;
           }
           .no-print { display: none !important; }
         }
       `}</style>
 
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "20px 0" }}>
-        <div id="print-modal" style={{ background: "#fff", width: "100%", maxWidth: 760, borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", margin: "0 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+        <div id="print-modal" style={{ background: "#fff", width: 794, maxWidth: "calc(100% - 32px)", borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
 
           <div ref={contentRef} style={{ zoom: zoom }}>
 
