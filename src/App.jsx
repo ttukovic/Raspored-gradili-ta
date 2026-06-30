@@ -772,7 +772,7 @@ function AnalysisScreen({ onBack }) {
 }
 
 // ── LandingScreen ─────────────────────────────────────────────────────────────
-function LandingScreen({ user, onSelect, onLogout }) {
+function LandingScreen({ onSelect, user, onLogout }) {
   return (
     <div style={{
       minHeight: "100vh", background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
@@ -780,8 +780,10 @@ function LandingScreen({ user, onSelect, onLogout }) {
     }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ textAlign: "center", marginBottom: 32, color: "#fff" }}>
-          <div style={{ fontSize: 40 }}>👋</div>
-          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8 }}>Bok, {user.name}!</div>
+          <div style={{ fontSize: 40 }}>🏗️</div>
+          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8 }}>
+            {user ? `Bok, ${user.name}!` : "Dobrodošli"}
+          </div>
           <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4 }}>Što želiš otvoriti?</div>
         </div>
 
@@ -809,10 +811,12 @@ function LandingScreen({ user, onSelect, onLogout }) {
           </div>
         </button>
 
-        <button onClick={onLogout} style={{
-          width: "100%", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 12,
-          padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#fff", fontSize: 13, fontWeight: 600
-        }}>← Odjava</button>
+        {user && (
+          <button onClick={onLogout} style={{
+            width: "100%", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 12,
+            padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#fff", fontSize: 13, fontWeight: 600
+          }}>← Odjava</button>
+        )}
       </div>
     </div>
   );
@@ -1124,6 +1128,7 @@ export default function App() {
   const [dragItem, setDragItem] = useState(null); // { siteId, cat, value }
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [screen, setScreen] = useState("landing");
+  const [pendingDest, setPendingDest] = useState(null); // "raspored" ili "sati" — pamti odabir prije logina
   const [newSiteName, setNewSiteName] = useState("");
   const pollRef = useRef(null);
   const lastLocalEditRef = useRef(0); // timestamp zadnje lokalne promjene
@@ -1362,10 +1367,21 @@ export default function App() {
   // Fali se ne računa u brojač — samo radnici koji su na gradilištima
   const totals = cats.map(c => sites ? sites.reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
 
-  if (!user) return <LoginScreen onLogin={setUser} />;
-
+  // 1) Landing — izbornik prikazan ODMAH; ako korisnik već nije prijavljen, prvo traži login
   if (screen === "landing") return (
-    <LandingScreen user={user} onSelect={setScreen} onLogout={() => setUser(null)} />
+    <LandingScreen
+      user={user}
+      onLogout={() => { setUser(null); setScreen("landing"); }}
+      onSelect={(dest) => {
+        if (user) { setScreen(dest); } // već prijavljen — idi direktno
+        else { setPendingDest(dest); setScreen("login"); }
+      }}
+    />
+  );
+
+  // 2) Login — traži se tek nakon što korisnik odabere što želi otvoriti
+  if (screen === "login" || !user) return (
+    <LoginScreen onLogin={(u) => { setUser(u); setScreen(pendingDest || "raspored"); }} />
   );
 
   if (screen === "sati") return (
