@@ -469,14 +469,41 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
 
 // ── PrintModal ────────────────────────────────────────────────────────────────
 function PrintModal({ sites, date, onClose, cats }) {
-  const regularSites = sites.filter(s => !s.permanent && cats.some(c => (s[c.key] || []).length > 0));
+  const regularSitesRaw = sites.filter(s => !s.permanent && cats.some(c => (s[c.key] || []).length > 0));
   const permanentSites = sites.filter(s => s.permanent);
   const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
   const rightCats = cats.filter(c => c.key !== "workers");
 
+  // ── Pametno balansiranje stupaca za print (samo redoslijed prikaza, ne mijenja stvarni raspored) ──
+  // Gradilišta se sortiraju po broju redaka (najveće prvo), pa se svako idući dodaje u TRENUTNO KRAĆI stupac.
+  // Time se izbjegava da veliko gradilište (10 ljudi) stoji pored malog (3-4) i ostavlja prazan prostor.
+  const rowsOf = (site) => {
+    const leftRows = (site.workers || []).length;
+    const rightRows = rightCats.reduce((a, c) => a + (site[c.key] || []).length, 0);
+    return Math.max(leftRows, rightRows, 1);
+  };
+
+  const regularSites = (() => {
+    const sorted = [...regularSitesRaw].sort((a, b) => rowsOf(b) - rowsOf(a));
+    const leftCol = [], rightCol = [];
+    let leftHeight = 0, rightHeight = 0;
+    sorted.forEach(site => {
+      const h = rowsOf(site);
+      if (leftHeight <= rightHeight) { leftCol.push(site); leftHeight += h; }
+      else { rightCol.push(site); rightHeight += h; }
+    });
+    // Spoji natrag u jedan niz koji se prikazuje kao CSS grid (lijevo, desno, lijevo, desno...)
+    const merged = [];
+    const maxLen = Math.max(leftCol.length, rightCol.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (leftCol[i]) merged.push(leftCol[i]);
+      if (rightCol[i]) merged.push(rightCol[i]);
+    }
+    return merged;
+  })();
+
   // ── Deterministički izračun zoom faktora na temelju stvarnog sadržaja ──
-  // (mjerenje DOM-a je nepouzdano kad isti sadržaj postoji dvaput u stablu — na ekranu i u print portalu)
   const zoom = (() => {
     const HEADER_PX = 70;
     const SITE_HEADER_PX = 26; // naziv gradilišta + linija + razmak
@@ -484,15 +511,9 @@ function PrintModal({ sites, date, onClose, cats }) {
     const SITE_GAP_PX = 12;    // razmak između kartica
     const FOOTER_PX = 8; // mali sigurnosni razmak na dnu
 
-    // Za svako gradilište, broj redaka = max(broj radnika, broj svih ostalih stavki zajedno)
-    const siteHeights = regularSites.map(site => {
-      const leftRows = (site.workers || []).length;
-      const rightRows = rightCats.reduce((a, c) => a + (site[c.key] || []).length, 0);
-      const rows = Math.max(leftRows, rightRows, 1);
-      return SITE_HEADER_PX + rows * ROW_PX + SITE_GAP_PX;
-    });
+    const siteHeights = regularSites.map(site => SITE_HEADER_PX + rowsOf(site) * ROW_PX + SITE_GAP_PX);
 
-    // Dva stupca — gradilišta se slažu naizmjence lijevo/desno, pa je ukupna visina = zbroj VEĆE polovice
+    // Stupci su sad balansirani algoritmom gore, pa računamo stvarnu visinu svakog stupca po istom redoslijedu prikaza
     let leftCol = 0, rightCol = 0;
     siteHeights.forEach((h, i) => { if (i % 2 === 0) leftCol += h; else rightCol += h; });
     const sitesBlockHeight = Math.max(leftCol, rightCol);
