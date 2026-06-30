@@ -93,6 +93,28 @@ const CAT_COLOR_PALETTE = [
   { color: "#db2777", bg: "#fdf2f8", border: "#db2777" },
 ];
 
+// ── Brand boja (Gradprom) — lako promijeniti kad stigne logo ──
+const BRAND_RED = "#DC2626";
+const BRAND_RED_DARK = "#B91C1C";
+const LOGO_URL = "/logo.png";
+
+// ── MiniLogo — mali logo za zaglavlja svih ekrana (osim landing/login gdje je veći) ──
+function MiniLogo({ size = 28 }) {
+  return LOGO_URL ? (
+    <img src={LOGO_URL} alt="Gradprom" style={{
+      height: size, width: "auto", objectFit: "contain", flexShrink: 0,
+      borderRadius: size * 0.25,
+      filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.25))"
+    }} />
+  ) : (
+    <div style={{
+      width: size, height: size, borderRadius: size * 0.28, background: BRAND_RED,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.55, color: "#fff", flexShrink: 0
+    }}>🏗️</div>
+  );
+}
+
 // ── Engineers ─────────────────────────────────────────────────────────────────
 const ENGINEERS = [
   { name: "Tomislav", pin: "1001" },
@@ -332,6 +354,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+            <MiniLogo size={26} />
             <div>
               <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Upravljanje</div>
               <div style={{ fontSize: 20, fontWeight: 800 }}>Baza podataka</div>
@@ -493,7 +516,7 @@ function PrintModal({ sites, date, onClose, cats }) {
       <div style={{ borderBottom: "3px solid #1e293b", paddingBottom: 12, marginBottom: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Raspored gradilišta</div>
+            <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Gradprom — Raspored</div>
             <div style={{ fontSize: 24, fontWeight: 900, color: "#1e293b" }}>{dateLabel}</div>
           </div>
           <div style={{ textAlign: "right", fontSize: 13, color: "#64748b" }}>
@@ -722,6 +745,7 @@ function AnalysisScreen({ onBack }) {
       <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 24px", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <MiniLogo size={26} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Admin pregled</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>📊 Analiza aktivnosti</div>
@@ -775,46 +799,57 @@ function AnalysisScreen({ onBack }) {
 function LandingScreen({ onSelect, user, onLogout }) {
   return (
     <div style={{
-      minHeight: "100vh", background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)",
+      minHeight: "100vh", background: "#ffffff",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 24
     }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
-        <div style={{ textAlign: "center", marginBottom: 32, color: "#fff" }}>
-          <div style={{ fontSize: 40 }}>🏗️</div>
-          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8 }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          {LOGO_URL ? (
+            <img src={LOGO_URL} alt="Gradprom" style={{
+              height: 80, marginBottom: 12, objectFit: "contain",
+              filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))"
+            }} />
+          ) : (
+            <div style={{
+              width: 64, height: 64, borderRadius: 16, background: BRAND_RED,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 28, margin: "0 auto 12px", color: "#fff"
+            }}>🏗️</div>
+          )}
+          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8, color: "#1e293b" }}>
             {user ? `Bok, ${user.name}!` : "Dobrodošli"}
           </div>
-          <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4 }}>Što želiš otvoriti?</div>
+          <div style={{ fontSize: 14, opacity: 0.7, marginTop: 4, color: "#64748b" }}>Što želiš otvoriti?</div>
         </div>
 
         <button onClick={() => onSelect("raspored")} style={{
-          width: "100%", background: "#fff", border: "none", borderRadius: 16,
+          width: "100%", background: BRAND_RED, border: "none", borderRadius: 16,
           padding: "22px 20px", marginBottom: 14, cursor: "pointer", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+          display: "flex", alignItems: "center", gap: 16, boxShadow: `0 4px 16px ${BRAND_RED}40`
         }}>
           <span style={{ fontSize: 32 }}>📅</span>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#1e293b" }}>Raspored gradilišta</div>
-            <div style={{ fontSize: 13, color: "#94a3b8" }}>Dnevni raspored radnika, kamiona i strojeva</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Raspored gradilišta</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Dnevni raspored radnika, kamiona i strojeva</div>
           </div>
         </button>
 
         <button onClick={() => onSelect("sati")} style={{
-          width: "100%", background: "#fff", border: "none", borderRadius: 16,
+          width: "100%", background: BRAND_RED, border: "none", borderRadius: 16,
           padding: "22px 20px", marginBottom: 14, cursor: "pointer", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 16px rgba(0,0,0,0.15)"
+          display: "flex", alignItems: "center", gap: 16, boxShadow: `0 4px 16px ${BRAND_RED}40`
         }}>
           <span style={{ fontSize: 32 }}>⏱️</span>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#1e293b" }}>Radni sati</div>
-            <div style={{ fontSize: 13, color: "#94a3b8" }}>Mjesečno praćenje sati po radniku</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Radni sati</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Mjesečno praćenje sati po radniku</div>
           </div>
         </button>
 
         {user && (
           <button onClick={onLogout} style={{
-            width: "100%", background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 12,
-            padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#fff", fontSize: 13, fontWeight: 600
+            width: "100%", background: "#f1f5f9", border: "none", borderRadius: 12,
+            padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
           }}>← Odjava</button>
         )}
       </div>
@@ -901,6 +936,7 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
       <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <MiniLogo size={26} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{user.name}</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>⏱️ Radni sati</div>
@@ -991,6 +1027,7 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
       <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <MiniLogo size={26} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{monthLabel}</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>{worker}</div>
@@ -1087,12 +1124,22 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-      <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 360, boxShadow: "0 8px 40px rgba(0,0,0,0.15)" }}>
+    <div style={{ minHeight: "100vh", background: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 360, boxShadow: "0 8px 40px rgba(0,0,0,0.1)", border: "1px solid #f1f5f9" }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 36 }}>🏗️</div>
-          <h2 style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: "#1e293b" }}>Raspored Gradilišta</h2>
-          <p style={{ margin: 0, color: "#94a3b8", fontSize: 14 }}>Prijavi se za nastavak</p>
+          {LOGO_URL ? (
+            <img src={LOGO_URL} alt="Gradprom" style={{
+              height: 70, marginBottom: 8, objectFit: "contain",
+              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.15))"
+            }} />
+          ) : (
+            <div style={{
+              width: 56, height: 56, borderRadius: 14, background: BRAND_RED,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 26, margin: "0 auto 8px", color: "#fff"
+            }}>🏗️</div>
+          )}
+          <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 14 }}>Prijavi se za nastavak</p>
         </div>
         <label style={{ fontSize: 13, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Odaberi korisnika</label>
         <select value={selected} onChange={e => setSelected(e.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 15, marginBottom: 14, outline: "none", boxSizing: "border-box", background: "#fff" }}>
@@ -1103,7 +1150,7 @@ function LoginScreen({ onLogin }) {
         <input type="password" placeholder="••••" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()}
           style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 20, letterSpacing: 8, marginBottom: 6, outline: "none", boxSizing: "border-box" }} />
         {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px" }}>{error}</p>}
-        <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", border: "none", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer", marginTop: 8 }}>Prijavi se</button>
+        <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: BRAND_RED, color: "#fff", border: "none", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer", marginTop: 8 }}>Prijavi se</button>
         <p style={{ textAlign: "center", fontSize: 12, color: "#cbd5e1", marginTop: 16, marginBottom: 0 }}>Kontaktiraj admina za PIN pristup.</p>
       </div>
     </div>
@@ -1401,16 +1448,19 @@ export default function App() {
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>
-              {user.name}{user.admin ? " 🔑" : ""} · Raspored
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, marginTop: 2 }}>{hrDate(currentDate)}</div>
-            <div style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {readOnly && <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>📖 Samo čitanje</span>}
-              {!isToday && user.admin && <span style={{ background: "rgba(255,200,0,0.3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>🔑 Admin edit</span>}
-              {savedFlash && <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}>✓ Spremljeno</span>}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <MiniLogo size={26} />
+            <div>
+              <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>
+                {user.name}{user.admin ? " 🔑" : ""} · Raspored
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, marginTop: 2 }}>{hrDate(currentDate)}</div>
+              <div style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {readOnly && <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>📖 Samo čitanje</span>}
+                {!isToday && user.admin && <span style={{ background: "rgba(255,200,0,0.3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>🔑 Admin edit</span>}
+                {savedFlash && <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}>✓ Spremljeno</span>}
               {lastEditor && !savedFlash && <span style={{ opacity: 0.75, fontSize: 11 }}>Zadnji: {lastEditor}</span>}
+            </div>
             </div>
           </div>
           {/* Totals */}
