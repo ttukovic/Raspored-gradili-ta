@@ -448,7 +448,11 @@ function PrintModal({ sites, date, onClose }) {
           {/* Permanent sites — Komin i Fali uvijek na dnu desno, samo radnici */}
           <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end" }}>
             {permanentSites.map(site => (
-              <div key={site.id} style={{ width: 220, border: "2px solid #1e293b", borderRadius: 8, padding: "10px 14px" }}>
+              <div key={site.id} style={
+                site.name === "Fali"
+                  ? { width: 220, border: "2px solid #1e293b", borderRadius: 8, padding: "10px 14px" }
+                  : { width: 220, padding: "10px 14px" }
+              }>
                 <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
                   {site.name}
                 </div>
