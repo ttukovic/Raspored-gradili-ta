@@ -823,26 +823,26 @@ function LandingScreen({ onSelect, user, onLogout }) {
         </div>
 
         <button onClick={() => onSelect("raspored")} style={{
-          width: "100%", background: BRAND_RED, border: "none", borderRadius: 16,
+          width: "100%", background: `${BRAND_RED}14`, border: `1.5px solid ${BRAND_RED}30`, borderRadius: 16,
           padding: "22px 20px", marginBottom: 14, cursor: "pointer", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16, boxShadow: `0 4px 16px ${BRAND_RED}40`
+          display: "flex", alignItems: "center", gap: 16
         }}>
           <span style={{ fontSize: 32 }}>📅</span>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Raspored gradilišta</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Dnevni raspored radnika, kamiona i strojeva</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: BRAND_RED_DARK }}>Raspored gradilišta</div>
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>Dnevni raspored radnika, kamiona i strojeva</div>
           </div>
         </button>
 
         <button onClick={() => onSelect("sati")} style={{
-          width: "100%", background: BRAND_RED, border: "none", borderRadius: 16,
+          width: "100%", background: `${BRAND_RED}14`, border: `1.5px solid ${BRAND_RED}30`, borderRadius: 16,
           padding: "22px 20px", marginBottom: 14, cursor: "pointer", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16, boxShadow: `0 4px 16px ${BRAND_RED}40`
+          display: "flex", alignItems: "center", gap: 16
         }}>
           <span style={{ fontSize: 32 }}>⏱️</span>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>Radni sati</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Mjesečno praćenje sati po radniku</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: BRAND_RED_DARK }}>Radni sati</div>
+            <div style={{ fontSize: 13, color: "#94a3b8" }}>Mjesečno praćenje sati po radniku</div>
           </div>
         </button>
 
@@ -1150,7 +1150,7 @@ function LoginScreen({ onLogin }) {
         <input type="password" placeholder="••••" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()}
           style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 20, letterSpacing: 8, marginBottom: 6, outline: "none", boxSizing: "border-box" }} />
         {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px" }}>{error}</p>}
-        <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: BRAND_RED, color: "#fff", border: "none", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer", marginTop: 8 }}>Prijavi se</button>
+        <button onClick={handleLogin} style={{ width: "100%", padding: "13px 0", background: `${BRAND_RED}14`, border: `1.5px solid ${BRAND_RED}30`, color: BRAND_RED_DARK, borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer", marginTop: 8 }}>Prijavi se</button>
         <p style={{ textAlign: "center", fontSize: 12, color: "#cbd5e1", marginTop: 16, marginBottom: 0 }}>Kontaktiraj admina za PIN pristup.</p>
       </div>
     </div>
