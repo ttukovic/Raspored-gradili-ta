@@ -62,6 +62,7 @@ const makeEmptySites = () => [
 // ── Storage ───────────────────────────────────────────────────────────────────
 const dateKey  = (d) => `raspored-day-${d}`;
 const BAZA_KEY = `raspored-baza-v2`;
+const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const fmt   = (d) => d.toISOString().slice(0, 10);
@@ -512,6 +513,84 @@ function PrintModal({ sites, date, onClose }) {
   );
 }
 
+// ── AnalysisScreen ────────────────────────────────────────────────────────────
+function AnalysisScreen({ onBack }) {
+  const [log, setLog] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    storage.get(ACTIVITY_LOG_KEY).then(res => {
+      setLog(res?.value ? JSON.parse(res.value) : {});
+      setLoading(false);
+    }).catch(() => { setLog({}); setLoading(false); });
+  }, []);
+
+  const sortedUsers = log
+    ? Object.entries(log).sort((a, b) => (b[1].total || 0) - (a[1].total || 0))
+    : [];
+  const grandTotal = sortedUsers.reduce((a, [, v]) => a + (v.total || 0), 0);
+  const maxTotal = Math.max(1, ...sortedUsers.map(([, v]) => v.total || 0));
+
+  const formatLastActive = (iso) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString("hr-HR", { day: "numeric", month: "numeric" }) + " u " + d.toLocaleTimeString("hr-HR", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", padding: "20px 16px 24px", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Admin pregled</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>📊 Analiza aktivnosti</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
+        ) : sortedUsers.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Još nema zabilježenih promjena.</div>
+        ) : (
+          <>
+            <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 16, boxShadow: "0 1px 6px rgba(0,0,0,0.07)", textAlign: "center" }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "#1e293b" }}>{grandTotal}</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Ukupno promjena svih korisnika</div>
+            </div>
+
+            {sortedUsers.map(([userName, data]) => (
+              <div key={userName} style={{ background: "#fff", borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "#1e293b" }}>{userName}</span>
+                  <span style={{ fontWeight: 800, fontSize: 18, color: "#1e40af" }}>{data.total || 0}</span>
+                </div>
+                {/* Bar */}
+                <div style={{ background: "#f1f5f9", borderRadius: 6, height: 8, overflow: "hidden", marginBottom: 8 }}>
+                  <div style={{
+                    width: `${((data.total || 0) / maxTotal) * 100}%`, height: "100%",
+                    background: "linear-gradient(90deg, #1e40af, #3b82f6)", borderRadius: 6
+                  }} />
+                </div>
+                <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                  Zadnja aktivnost: {formatLastActive(data.lastActive)}
+                </div>
+                {data.byDay && Object.keys(data.byDay).length > 0 && (
+                  <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 6 }}>
+                    Danas: {data.byDay[today()] || 0} promjena
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── LoginScreen ───────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [selected, setSelected] = useState("");
@@ -520,7 +599,7 @@ function LoginScreen({ onLogin }) {
 
   const handleLogin = () => {
     const eng = ENGINEERS.find(e => e.name === selected);
-    if (!eng) { setError("Odaberi inženjera."); return; }
+    if (!eng) { setError("Odaberi korisnika."); return; }
     if (eng.pin !== pin) { setError("Pogrešan PIN."); setPin(""); return; }
     onLogin(eng);
   };
@@ -533,7 +612,7 @@ function LoginScreen({ onLogin }) {
           <h2 style={{ margin: "8px 0 4px", fontSize: 20, fontWeight: 800, color: "#1e293b" }}>Raspored Gradilišta</h2>
           <p style={{ margin: 0, color: "#94a3b8", fontSize: 14 }}>Prijavi se za nastavak</p>
         </div>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Odaberi inženjera</label>
+        <label style={{ fontSize: 13, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Odaberi korisnika</label>
         <select value={selected} onChange={e => setSelected(e.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 15, marginBottom: 14, outline: "none", boxSizing: "border-box", background: "#fff" }}>
           <option value="">— Odaberi —</option>
           {ENGINEERS.map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
@@ -650,6 +729,20 @@ export default function App() {
     return () => clearInterval(pollRef.current);
   }, [user, currentDate, readOnly, silentRefresh]);
 
+  // ── Activity log — broji promjene po korisniku ──
+  const logActivity = useCallback(async (userName) => {
+    try {
+      const res = await storage.get(ACTIVITY_LOG_KEY);
+      const log = res?.value ? JSON.parse(res.value) : {};
+      const today_ = today();
+      if (!log[userName]) log[userName] = { total: 0, byDay: {} };
+      log[userName].total = (log[userName].total || 0) + 1;
+      log[userName].byDay[today_] = (log[userName].byDay[today_] || 0) + 1;
+      log[userName].lastActive = new Date().toISOString();
+      await storage.set(ACTIVITY_LOG_KEY, JSON.stringify(log));
+    } catch (_) {}
+  }, []);
+
   // ── Save day ──
   const save = useCallback(async (newSites) => {
     if (readOnly) return;
@@ -658,13 +751,17 @@ export default function App() {
       await storage.set(dateKey(currentDate), JSON.stringify({ sites: newSites, lastEditor: user.name, savedAt: new Date().toISOString() }), true);
       setSavedFlash(true);
       setTimeout(() => setSavedFlash(false), 2000);
+      logActivity(user.name);
     } catch (_) {}
-  }, [currentDate, user, readOnly]);
+  }, [currentDate, user, readOnly, logActivity]);
 
   // ── Save baza ──
   const saveBaza = async (newAllData) => {
     lastLocalEditRef.current = Date.now();
-    try { await storage.set(BAZA_KEY, JSON.stringify(newAllData)); } catch (_) {}
+    try {
+      await storage.set(BAZA_KEY, JSON.stringify(newAllData));
+      logActivity(user.name);
+    } catch (_) {}
   };
 
   const updateSites = (newSites) => {
@@ -720,6 +817,10 @@ export default function App() {
 
   if (screen === "baza") return (
     <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} />
+  );
+
+  if (screen === "analiza" && user.admin) return (
+    <AnalysisScreen onBack={() => setScreen("raspored")} />
   );
 
   return (
@@ -823,9 +924,12 @@ export default function App() {
       )}
 
       {/* Bottom buttons */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(248,250,252,0.95)", backdropFilter: "blur(8px)", borderTop: "1px solid #e2e8f0", padding: "12px 16px", display: "flex", gap: 8, justifyContent: "space-between" }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(248,250,252,0.95)", backdropFilter: "blur(8px)", borderTop: "1px solid #e2e8f0", padding: "12px 16px", display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
         <button onClick={() => setUser(null)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>← Odjava</button>
         <button onClick={() => setScreen("baza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e40af", cursor: "pointer" }}>📋 Baza</button>
+        {user.admin && (
+          <button onClick={() => setScreen("analiza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#059669", cursor: "pointer" }}>📊 Analiza</button>
+        )}
         <button onClick={() => setShowPrint(true)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", cursor: "pointer" }}>🖨️ Ispiši</button>
         {!readOnly && (
           <button onClick={() => setShowAddSite(true)} style={{ background: "linear-gradient(135deg, #1e40af, #3b82f6)", border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>+ Gradilište</button>
