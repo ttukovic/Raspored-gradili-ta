@@ -393,51 +393,53 @@ function PrintModal({ sites, date, onClose }) {
             </div>
           </div>
 
-          {/* Regular sites */}
-          {regularSites.map((site, idx) => (
-            <div key={site.id} className="print-site" style={{ borderBottom: idx < regularSites.length - 1 ? "1px solid #e2e8f0" : "none", paddingBottom: 16, marginBottom: 16 }}>
-              {/* Naziv + crta */}
-              <div style={{ fontSize: 14, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 10 }}>
-                {site.name}
-              </div>
-
-              {/* Sadržaj: radnici lijevo | sve ostalo desno */}
-              <div style={{ display: "flex", gap: 0 }}>
-                {/* Radnici — lijeva kolona */}
-                <div style={{ flex: 1, paddingRight: 16 }}>
-                  {(site.workers || []).length > 0 ? (
-                    (site.workers || []).map((w, i) => (
-                      <div key={w} style={{ fontSize: 13, color: "#1e293b", padding: "3px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
-                    ))
-                  ) : (
-                    <div style={{ fontSize: 12, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
-                  )}
+          {/* Regular sites — dva stupca */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+            {regularSites.map((site) => (
+              <div key={site.id} className="print-site" style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: 12, marginBottom: 12 }}>
+                {/* Naziv + crta */}
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
+                  {site.name}
                 </div>
 
-                {/* Separator */}
-                <div style={{ width: 1, background: "#1e293b", opacity: 0.15, flexShrink: 0 }} />
+                {/* Sadržaj: radnici lijevo | sve ostalo desno */}
+                <div style={{ display: "flex", gap: 0 }}>
+                  {/* Radnici — lijeva kolona */}
+                  <div style={{ flex: 1, paddingRight: 10 }}>
+                    {(site.workers || []).length > 0 ? (
+                      (site.workers || []).map((w, i) => (
+                        <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
+                    )}
+                  </div>
 
-                {/* Desna strana: kamioni, prikolice, strojevi — svaki u svojoj sekciji */}
-                <div style={{ flex: 1, paddingLeft: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                  {rightCats.map(cat => {
-                    const vals = site[cat.key] || [];
-                    if (vals.length === 0) return null;
-                    return (
-                      <div key={cat.key}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 }}>{cat.icon} {cat.label}</div>
-                        {vals.map((v, i) => (
-                          <div key={v} style={{ fontSize: 13, color: "#1e293b", padding: "3px 0", borderBottom: i < vals.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{v}</div>
-                        ))}
-                      </div>
-                    );
-                  })}
-                  {rightCats.every(cat => (site[cat.key] || []).length === 0) && (
-                    <div style={{ fontSize: 12, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
-                  )}
+                  {/* Separator */}
+                  <div style={{ width: 1, background: "#1e293b", opacity: 0.15, flexShrink: 0 }} />
+
+                  {/* Desna strana: kamioni, prikolice, strojevi — svaki u svojoj sekciji */}
+                  <div style={{ flex: 1, paddingLeft: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {rightCats.map(cat => {
+                      const vals = site[cat.key] || [];
+                      if (vals.length === 0) return null;
+                      return (
+                        <div key={cat.key}>
+                          <div style={{ fontSize: 8, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 2 }}>{cat.icon} {cat.label}</div>
+                          {vals.map((v, i) => (
+                            <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < vals.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{v}</div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                    {rightCats.every(cat => (site[cat.key] || []).length === 0) && (
+                      <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
 
           {regularSites.length === 0 && (
             <div style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Nema unesenih podataka za ovaj dan.</div>
