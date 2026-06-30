@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 const SUPABASE_URL = "https://ixyxeqkqobwbujwkuliv.supabase.co";
@@ -451,13 +452,11 @@ function PrintModal({ sites, date, onClose, cats }) {
   const contentRef = useRef(null);
   const [zoom, setZoom] = useState(1);
 
-  // A4 usable height at 96dpi minus 10mm+10mm margins ≈ 1050px
   const A4_USABLE_HEIGHT_PX = 1000;
 
   const calcZoom = useCallback(() => {
     if (!contentRef.current) return;
     contentRef.current.style.zoom = 1;
-    // Dvostruki rAF — pričekaj da browser stvarno presloži layout prije mjerenja
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!contentRef.current) return;
@@ -474,132 +473,125 @@ function PrintModal({ sites, date, onClose, cats }) {
 
   useEffect(() => {
     calcZoom();
-    // Mjeri i točno prije fizičkog ispisa (kad preglednik primijeni print CSS, širina se mijenja)
-    const mql = window.matchMedia ? window.matchMedia("print") : null;
-    const handleBeforePrint = () => calcZoom();
-    window.addEventListener("beforeprint", handleBeforePrint);
-    if (mql && mql.addEventListener) mql.addEventListener("change", (e) => { if (e.matches) calcZoom(); });
-    return () => window.removeEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("beforeprint", calcZoom);
+    return () => window.removeEventListener("beforeprint", calcZoom);
   }, [sites, cats, calcZoom]);
+
+  // Sadržaj koji se stvarno printa — bez fiksnog pozicioniranja, da Chrome ne duplicira stranice
+  const printableContent = (
+    <div ref={contentRef} style={{ zoom }}>
+      {/* Page header */}
+      <div style={{ borderBottom: "3px solid #1e293b", paddingBottom: 12, marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Raspored gradilišta</div>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#1e293b" }}>{dateLabel}</div>
+          </div>
+          <div style={{ textAlign: "right", fontSize: 11, color: "#64748b", lineHeight: 2 }}>
+            {cats.map(c => (
+              <div key={c.key}>{c.icon} {c.label}: <strong style={{ color: "#1e293b" }}>{sites.reduce((a, s) => a + (s[c.key] || []).length, 0)}</strong></div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Regular sites — dva stupca */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+        {regularSites.map((site) => (
+          <div key={site.id} style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: 12, marginBottom: 12, breakInside: "avoid" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
+              {site.name}
+            </div>
+            <div style={{ display: "flex", gap: 0 }}>
+              <div style={{ flex: 1, paddingRight: 10 }}>
+                {(site.workers || []).length > 0 ? (
+                  (site.workers || []).map((w, i) => (
+                    <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
+                  ))
+                ) : (
+                  <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
+                )}
+              </div>
+              <div style={{ width: 1, background: "#1e293b", opacity: 0.15, flexShrink: 0 }} />
+              <div style={{ flex: 1, paddingLeft: 10 }}>
+                {(() => {
+                  const allRightVals = rightCats.flatMap(cat => site[cat.key] || []);
+                  return allRightVals.length > 0 ? (
+                    allRightVals.map((v, i) => (
+                      <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < allRightVals.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{v}</div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {regularSites.length === 0 && (
+        <div style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Nema unesenih podataka za ovaj dan.</div>
+      )}
+
+      {/* Permanent sites — Komin i Fali uvijek na dnu desno, samo radnici. Komin bez okvira, Fali s okvirom */}
+      <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end", breakInside: "avoid" }}>
+        {permanentSites.map(site => (
+          <div key={site.id} style={{
+            width: 220, padding: "10px 14px", boxSizing: "border-box",
+            border: site.name === "Fali" ? "2px solid #1e293b" : "2px solid transparent",
+            borderRadius: 8,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
+              {site.name}
+            </div>
+            <div>
+              {(site.workers || []).length > 0 ? (site.workers || []).map((w, i) => (
+                <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "3px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
+              )) : <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 16, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
+        Generirano: {new Date().toLocaleString("hr-HR")}
+      </div>
+    </div>
+  );
 
   return (
     <>
       <style>{`
         @page { size: A4 portrait; margin: 10mm; }
         @media print {
-          html, body { height: auto !important; }
-          body * { visibility: hidden; }
-          #print-modal, #print-modal * { visibility: visible; }
-          #print-modal {
-            position: absolute !important; top: 0 !important; left: 0 !important;
-            display: block !important; width: 794px !important;
-            background: white !important; box-shadow: none !important;
-            border-radius: 0 !important; padding: 0 !important; margin: 0 !important;
-            max-width: 794px !important; overflow: visible !important; height: auto !important;
-          }
-          .no-print { display: none !important; }
+          /* Sakrij sve OSIM print-only sloja */
+          #root { display: none !important; }
+          #print-only-layer { display: block !important; }
+        }
+        @media screen {
+          #print-only-layer { display: none !important; }
         }
       `}</style>
 
+      {/* Ekranski overlay — modal preview, vidljiv samo na ekranu */}
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "20px 0" }}>
-        <div id="print-modal" style={{ background: "#fff", width: 794, maxWidth: "calc(100% - 32px)", borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
-
-          <div ref={contentRef} style={{ zoom: zoom }}>
-
-          {/* Page header */}
-          <div style={{ borderBottom: "3px solid #1e293b", paddingBottom: 12, marginBottom: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-              <div>
-                <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Raspored gradilišta</div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: "#1e293b" }}>{dateLabel}</div>
-              </div>
-              <div style={{ textAlign: "right", fontSize: 11, color: "#64748b", lineHeight: 2 }}>
-                {cats.map(c => (
-                  <div key={c.key}>{c.icon} {c.label}: <strong style={{ color: "#1e293b" }}>{sites.reduce((a, s) => a + (s[c.key] || []).length, 0)}</strong></div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Regular sites — dva stupca */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
-            {regularSites.map((site) => (
-              <div key={site.id} style={{ borderBottom: "1px solid #e2e8f0", paddingBottom: 12, marginBottom: 12, breakInside: "avoid" }}>
-                {/* Naziv + crta */}
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
-                  {site.name}
-                </div>
-
-                {/* Sadržaj: radnici lijevo | sve ostalo desno */}
-                <div style={{ display: "flex", gap: 0 }}>
-                  {/* Radnici — lijeva kolona */}
-                  <div style={{ flex: 1, paddingRight: 10 }}>
-                    {(site.workers || []).length > 0 ? (
-                      (site.workers || []).map((w, i) => (
-                        <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
-                      ))
-                    ) : (
-                      <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
-                    )}
-                  </div>
-
-                  {/* Separator */}
-                  <div style={{ width: 1, background: "#1e293b", opacity: 0.15, flexShrink: 0 }} />
-
-                  {/* Desna strana: kamioni + prikolice + strojevi + sve ostalo — jedno ispod drugog, bez naslova */}
-                  <div style={{ flex: 1, paddingLeft: 10 }}>
-                    {(() => {
-                      const allRightVals = rightCats.flatMap(cat => site[cat.key] || []);
-                      return allRightVals.length > 0 ? (
-                        allRightVals.map((v, i) => (
-                          <div key={v} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0", borderBottom: i < allRightVals.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{v}</div>
-                        ))
-                      ) : (
-                        <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {regularSites.length === 0 && (
-            <div style={{ textAlign: "center", color: "#94a3b8", padding: 20 }}>Nema unesenih podataka za ovaj dan.</div>
-          )}
-
-          {/* Permanent sites — Komin i Fali uvijek na dnu desno, samo radnici. Komin bez okvira, Fali s okvirom */}
-          <div style={{ display: "flex", gap: 16, marginTop: 16, justifyContent: "flex-end", breakInside: "avoid" }}>
-            {permanentSites.map(site => (
-              <div key={site.id} style={{
-                width: 220, padding: "10px 14px", boxSizing: "border-box",
-                border: site.name === "Fali" ? "2px solid #1e293b" : "2px solid transparent",
-                borderRadius: 8,
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#1e293b", textTransform: "uppercase", letterSpacing: 0.5, borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8 }}>
-                  {site.name}
-                </div>
-                <div>
-                  {(site.workers || []).length > 0 ? (site.workers || []).map((w, i) => (
-                    <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "3px 0", borderBottom: i < site.workers.length - 1 ? "1px dotted #e2e8f0" : "none" }}>{w}</div>
-                  )) : <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 16, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
-            Generirano: {new Date().toLocaleString("hr-HR")}
-          </div>
-
-          </div>{/* end zoom wrapper */}
-
+        <div style={{ background: "#fff", width: 794, maxWidth: "calc(100% - 32px)", borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+          {printableContent}
           <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 20 }}>
             <button onClick={() => window.print()} style={{ flex: 1, padding: "13px 0", background: "linear-gradient(135deg, #1e40af, #3b82f6)", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>🖨️ Ispiši / Spremi PDF</button>
             <button onClick={onClose} style={{ padding: "13px 20px", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Zatvori</button>
           </div>
         </div>
       </div>
+
+      {/* Print-only sloj — izvan svih fixed/absolute roditelja, direktno u body, samo za printer */}
+      {createPortal(
+        <div id="print-only-layer" style={{ display: "none", width: "794px", padding: "20px", boxSizing: "border-box" }}>
+          {printableContent}
+        </div>,
+        document.body
+      )}
     </>
   );
 }
