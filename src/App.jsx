@@ -333,26 +333,50 @@ function PrintModal({ sites, date, onClose }) {
   const permanentSites = sites.filter(s => s.permanent);
   const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
-  // Print columns: workers left, then trucks | trailers | machines right
   const rightCats = CATS.filter(c => c.key !== "workers");
+  const contentRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  // A4 height at 96dpi minus print margins (~277mm usable height ≈ 1046px at 96dpi)
+  const A4_USABLE_HEIGHT_PX = 1040;
+
+  useEffect(() => {
+    const calcScale = () => {
+      if (!contentRef.current) return;
+      const contentHeight = contentRef.current.scrollHeight;
+      if (contentHeight > A4_USABLE_HEIGHT_PX) {
+        setScale(A4_USABLE_HEIGHT_PX / contentHeight);
+      } else {
+        setScale(1);
+      }
+    };
+    calcScale();
+    window.addEventListener("beforeprint", calcScale);
+    return () => window.removeEventListener("beforeprint", calcScale);
+  }, [sites]);
 
   return (
     <>
       <style>{`
+        @page { size: A4; margin: 10mm; }
         @media print {
           body * { visibility: hidden; }
           #print-modal, #print-modal * { visibility: visible; }
           #print-modal { position: absolute !important; top: 0; left: 0;
             display: block !important; width: 100% !important;
             background: white !important; box-shadow: none !important;
-            border-radius: 0 !important; padding: 20px !important; margin: 0 !important; max-width: 100% !important; }
+            border-radius: 0 !important; padding: 0 !important; margin: 0 !important; max-width: 100% !important;
+            overflow: visible !important; height: auto !important; }
           .no-print { display: none !important; }
           .print-site { page-break-inside: avoid; }
+          .print-scale-wrapper { transform-origin: top left; }
         }
       `}</style>
 
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 2000, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "20px 0" }}>
         <div id="print-modal" style={{ background: "#fff", width: "100%", maxWidth: 760, borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", margin: "0 16px", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+
+          <div ref={contentRef} className="print-scale-wrapper" style={{ transform: `scale(${scale})`, transformOrigin: "top left", width: scale < 1 ? `${100 / scale}%` : "100%" }}>
 
           {/* Page header */}
           <div style={{ borderBottom: "3px solid #1e293b", paddingBottom: 12, marginBottom: 24 }}>
@@ -434,6 +458,8 @@ function PrintModal({ sites, date, onClose }) {
               </div>
             ))}
           </div>
+
+          </div>{/* end print-scale-wrapper */}
 
           <div style={{ fontSize: 10, color: "#cbd5e1", marginTop: 16, borderTop: "1px solid #f1f5f9", paddingTop: 12 }}>
             Generirano: {new Date().toLocaleString("hr-HR")}
