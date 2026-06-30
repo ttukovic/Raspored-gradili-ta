@@ -449,37 +449,44 @@ function PrintModal({ sites, date, onClose, cats }) {
   const dateLabel = new Date(date + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
   const rightCats = cats.filter(c => c.key !== "workers");
-  const contentRef = useRef(null);
-  const [zoom, setZoom] = useState(1);
 
-  const A4_USABLE_HEIGHT_PX = 920; // konzervativnije, da uvijek stane uz padding print-layera
+  // ── Deterministički izračun zoom faktora na temelju stvarnog sadržaja ──
+  // (mjerenje DOM-a je nepouzdano kad isti sadržaj postoji dvaput u stablu — na ekranu i u print portalu)
+  const zoom = (() => {
+    const HEADER_PX = 70;
+    const SITE_HEADER_PX = 26; // naziv gradilišta + linija + razmak
+    const ROW_PX = 16.5;       // jedan red (radnik/kamion/...)
+    const SITE_GAP_PX = 12;    // razmak između kartica
+    const FOOTER_PX = 40;      // "Generirano: ..." + razmak
 
-  const calcZoom = useCallback(() => {
-    if (!contentRef.current) return;
-    contentRef.current.style.zoom = 1;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (!contentRef.current) return;
-        const naturalHeight = contentRef.current.scrollHeight;
-        if (naturalHeight > A4_USABLE_HEIGHT_PX) {
-          const z = Math.max(0.3, A4_USABLE_HEIGHT_PX / naturalHeight);
-          setZoom(z);
-        } else {
-          setZoom(1);
-        }
-      });
+    // Za svako gradilište, broj redaka = max(broj radnika, broj svih ostalih stavki zajedno)
+    const siteHeights = regularSites.map(site => {
+      const leftRows = (site.workers || []).length;
+      const rightRows = rightCats.reduce((a, c) => a + (site[c.key] || []).length, 0);
+      const rows = Math.max(leftRows, rightRows, 1);
+      return SITE_HEADER_PX + rows * ROW_PX + SITE_GAP_PX;
     });
-  }, []);
 
-  useEffect(() => {
-    calcZoom();
-    window.addEventListener("beforeprint", calcZoom);
-    return () => window.removeEventListener("beforeprint", calcZoom);
-  }, [sites, cats, calcZoom]);
+    // Dva stupca — gradilišta se slažu naizmjence lijevo/desno, pa je ukupna visina = zbroj VEĆE polovice
+    let leftCol = 0, rightCol = 0;
+    siteHeights.forEach((h, i) => { if (i % 2 === 0) leftCol += h; else rightCol += h; });
+    const sitesBlockHeight = Math.max(leftCol, rightCol);
+
+    const permanentMaxRows = Math.max(1, ...permanentSites.map(s => (s.workers || []).length));
+    const permanentBlockHeight = permanentMaxRows > 0 ? (SITE_HEADER_PX + permanentMaxRows * ROW_PX + 20) : 0;
+
+    const totalHeight = HEADER_PX + sitesBlockHeight + permanentBlockHeight + FOOTER_PX;
+
+    const A4_USABLE_HEIGHT_PX = 950;
+    if (totalHeight > A4_USABLE_HEIGHT_PX) {
+      return Math.max(0.35, A4_USABLE_HEIGHT_PX / totalHeight);
+    }
+    return 1;
+  })();
 
   // Sadržaj koji se stvarno printa — bez fiksnog pozicioniranja, da Chrome ne duplicira stranice
   const printableContent = (
-    <div ref={contentRef} style={{ zoom }}>
+    <div style={{ zoom }}>
       {/* Page header */}
       <div style={{ borderBottom: "3px solid #1e293b", paddingBottom: 12, marginBottom: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
@@ -487,10 +494,11 @@ function PrintModal({ sites, date, onClose, cats }) {
             <div style={{ fontSize: 10, color: "#94a3b8", letterSpacing: 2, textTransform: "uppercase", marginBottom: 4 }}>Raspored gradilišta</div>
             <div style={{ fontSize: 24, fontWeight: 900, color: "#1e293b" }}>{dateLabel}</div>
           </div>
-          <div style={{ textAlign: "right", fontSize: 11, color: "#64748b", lineHeight: 2 }}>
-            {cats.map(c => (
-              <div key={c.key}>{c.icon} {c.label}: <strong style={{ color: "#1e293b" }}>{sites.reduce((a, s) => a + (s[c.key] || []).length, 0)}</strong></div>
-            ))}
+          <div style={{ textAlign: "right", fontSize: 13, color: "#64748b" }}>
+            <span>👷 Radnici ukupno: </span>
+            <strong style={{ color: "#1e293b", fontSize: 16 }}>
+              {sites.reduce((a, s) => a + (s.workers || []).length, 0)}
+            </strong>
           </div>
         </div>
       </div>
