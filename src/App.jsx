@@ -159,25 +159,34 @@ const ENGINEERS = [
 
 // ── useSettings hook ───────────────────────────────────────────────────────────
 function useSettings() {
-  const [settings, setSettings] = useState({ lang: "hr", fontSize: "normal" });
+  const [settings, setSettings] = useState({ fontSize: "normal" });
   useEffect(() => {
     try {
       const s = localStorage.getItem(SETTINGS_KEY);
-      if (s) setSettings(JSON.parse(s));
+      if (s) {
+        const parsed = JSON.parse(s);
+        setSettings(parsed);
+        applyFontSize(parsed.fontSize);
+      }
     } catch (_) {}
   }, []);
   const save = (newSettings) => {
     setSettings(newSettings);
+    applyFontSize(newSettings.fontSize);
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings)); } catch (_) {}
   };
   return [settings, save];
 }
 
+function applyFontSize(size) {
+  const map = { small: "13px", normal: "15px", large: "18px" };
+  document.documentElement.style.fontSize = map[size] || "15px";
+}
+
 // ── SettingsPanel ──────────────────────────────────────────────────────────────
 function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
-  const [lang, setLang] = useState(settings.lang);
-  const [fontSize, setFontSize] = useState(settings.fontSize);
-  const [pinStep, setPinStep] = useState(0); // 0=idle 1=old pin 2=new pin 3=confirm
+  const [fontSize, setFontSize] = useState(settings.fontSize || "normal");
+  const [pinStep, setPinStep] = useState(0);
   const [pinOld, setPinOld] = useState("");
   const [pinNew, setPinNew] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
@@ -185,13 +194,18 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
   const [pinSuccess, setPinSuccess] = useState(false);
 
   const handleSave = () => {
-    onSaveSettings({ lang, fontSize });
+    onSaveSettings({ fontSize });
     onClose();
+  };
+
+  // Primijeni font odmah pri kliku, bez čekanja na Save
+  const handleFontSize = (val) => {
+    setFontSize(val);
+    applyFontSize(val);
   };
 
   const [pinsOverride, setPinsOverride] = useState({});
 
-  // Učitaj prilagođene PINove iz Supabase
   useEffect(() => {
     storage.get(PINS_KEY).then(res => {
       if (res?.value) setPinsOverride(JSON.parse(res.value));
@@ -207,7 +221,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
     if (pinNew !== pinConfirm) { setPinError("PINovi se ne podudaraju."); setPinConfirm(""); return; }
     try {
       const newOverrides = { ...pinsOverride, [user.name]: pinNew };
-      await storage.set(PINS_KEY, JSON.stringify(newOverrides), true); // shared = true da admin vidi
+      await storage.set(PINS_KEY, JSON.stringify(newOverrides), true);
       setPinsOverride(newOverrides);
       setPinSuccess(true);
       setPinError("");
@@ -230,28 +244,12 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
           <span style={{ fontSize: 13, color: "#94a3b8" }}>{user.name}</span>
         </div>
 
-        {/* Jezik */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🌐 Jezik / Language</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[["hr", "🇭🇷 Hrvatski"], ["en", "🇬🇧 English"]].map(([code, label]) => (
-              <button key={code} onClick={() => setLang(code)} style={{
-                flex: 1, padding: "12px 0", border: "2px solid",
-                borderColor: lang === code ? "#C73E3E" : "#e2e8f0",
-                borderRadius: 12, background: lang === code ? "#fef2f2" : "#fff",
-                color: lang === code ? "#C73E3E" : "#64748b",
-                fontSize: 14, fontWeight: 700, cursor: "pointer"
-              }}>{label}</button>
-            ))}
-          </div>
-        </div>
-
         {/* Veličina fonta */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔠 Veličina teksta</div>
           <div style={{ display: "flex", gap: 8 }}>
             {[["small", "Mala", "13px"], ["normal", "Normalna", "15px"], ["large", "Velika", "18px"]].map(([val, label, size]) => (
-              <button key={val} onClick={() => setFontSize(val)} style={{
+              <button key={val} onClick={() => handleFontSize(val)} style={{
                 flex: 1, padding: "12px 0", border: "2px solid",
                 borderColor: fontSize === val ? "#C73E3E" : "#e2e8f0",
                 borderRadius: 12, background: fontSize === val ? "#fef2f2" : "#fff",
