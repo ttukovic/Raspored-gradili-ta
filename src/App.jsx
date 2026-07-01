@@ -104,7 +104,7 @@ const hrDate  = (dateStr) => new Date(dateStr + "T12:00:00").toLocaleDateString(
 const DEFAULT_CATS = [
   { key: "workers",  label: "Radnici",   icon: "👷", color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
   { key: "trucks",   label: "Kamioni",   icon: "🚛", color: "#f97316", bg: "#fff7ed", border: "#f97316" },
-  { key: "trailers", label: "Prikolice", icon: "🚛", color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
+  { key: "trailers", label: "Prikolice", icon: "🚚", color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
   { key: "machines", label: "Strojevi",  icon: "⚙️", color: "#059669", bg: "#ecfdf5", border: "#059669" },
 ];
 const CATS_KEY = `raspored-categories`;
@@ -2243,7 +2243,9 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
 
   // ── Glavni pregled Radionice ──
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      {/* Lijevi dio — glavni sadržaj */}
+      <div style={{ flex: 1, background: "#f8fafc", overflowY: "auto", minWidth: 0 }}>
       <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2261,22 +2263,12 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             {settingsBtn}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 4, paddingBottom: 0 }}>
-          {[["pregled", "🔧 Vozila i strojevi"], ["zadaci", "📋 Zadaci (14 dana)"]].map(([v, l]) => (
-            <button key={v} onClick={() => setView(v)} style={{
-              flex: 1, padding: "8px 0", border: "none", borderRadius: "10px 10px 0 0",
-              fontSize: 12, fontWeight: 700, cursor: "pointer",
-              background: view === v ? "#fff" : "rgba(255,255,255,0.2)",
-              color: view === v ? "#C73E3E" : "#fff"
-            }}>{l}</button>
-          ))}
-        </div>
       </div>
 
       <div style={{ padding: 16 }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
-        ) : view === "pregled" ? (
+        ) : (
           /* Landing s oblačićima kategorija, pa lista kad odabereš */
           <>
             {!selectedCat ? (
@@ -2357,84 +2349,8 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
               </>
             )}
           </>
-        ) : (
-          /* Zadaci za 14 dana */
-          <>
-            <button onClick={() => setShowAddTask(true)} style={{
-              width: "100%", marginBottom: 14, padding: "13px 0",
-              background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
-              border: "none", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer"
-            }}>+ Novi planirani zadatak</button>
-
-            {/* Zakasnili zadaci */}
-            {overdueTask.length > 0 && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>⚠️ Zakasnili zadaci</div>
-                {overdueTask.map(t => (
-                  <TaskCard key={t.id} task={t} onDone={() => setTaskStatus(t.id, "done")} onSkip={() => setTaskStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatDate={formatDate} daysUntil={daysUntil} overdue />
-                ))}
-              </div>
-            )}
-
-            {/* Iduća 2 tjedna */}
-            {upcomingTasks.length === 0 && overdueTask.length === 0 ? (
-              <div style={{ textAlign: "center", padding: 48, color: "#94a3b8" }}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>✅</div>
-                <div>Nema planiranih zadataka u idućih 14 dana.</div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Iduća 2 tjedna</div>
-                {upcomingTasks.map(t => (
-                  <TaskCard key={t.id} task={t} onDone={() => setTaskStatus(t.id, "done")} onSkip={() => setTaskStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatDate={formatDate} daysUntil={daysUntil} />
-                ))}
-              </div>
-            )}
-
-            {/* Završeni u zadnja 2 tjedna */}
-            {tasks.filter(t => t.status !== "pending" && t.datum >= new Date(Date.now() - 14*86400000).toISOString().slice(0,10)).length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>Nedavno završeni</div>
-                {tasks.filter(t => t.status !== "pending" && t.datum >= new Date(Date.now() - 14*86400000).toISOString().slice(0,10))
-                  .sort((a,b) => b.datum.localeCompare(a.datum))
-                  .map(t => (
-                    <TaskCard key={t.id} task={t} onDone={() => setTaskStatus(t.id, "done")} onSkip={() => setTaskStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatDate={formatDate} daysUntil={daysUntil} />
-                  ))
-                }
-              </div>
-            )}
-          </>
         )}
       </div>
-
-      {/* Add task modal */}
-      {showAddTask && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 2000 }} onClick={() => setShowAddTask(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
-            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
-            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 800 }}>Novi planirani zadatak</h3>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Vozilo / stroj</label>
-            <select value={newTask.itemKey} onChange={e => setNewTask(f => ({ ...f, itemKey: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 12, background: "#fff" }}>
-              <option value="">— Odaberi —</option>
-              {cats.map(cat => (
-                <optgroup key={cat.key} label={`${cat.icon} ${cat.label}`}>
-                  {(allData[cat.key] || []).map(name => (
-                    <option key={name} value={`${cat.key}:${name}`}>{name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Datum</label>
-            <input type="date" value={newTask.datum} onChange={e => setNewTask(f => ({ ...f, datum: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 12 }} />
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Opis zadatka</label>
-            <input type="text" placeholder="npr. Zamjena ulja, tehnički pregled..." value={newTask.opis} onChange={e => setNewTask(f => ({ ...f, opis: e.target.value }))}
-              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 16 }} />
-            <button onClick={addTask} style={{ width: "100%", padding: "13px 0", background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))", border: "none", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Dodaj zadatak</button>
-          </div>
-        </div>
-      )}
 
       {/* Add category modal */}
       {showAddCat && (
@@ -2466,6 +2382,194 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
           </div>
         </div>
       )}
+      </div>{/* kraj lijevog dijela */}
+
+      {/* Fiksni panel zadataka — desna strana */}
+      <TaskPanel cats={[...cats.filter(c => c.key !== "workers"), ...extraCats]} allData={allRadionicaData} user={user} isAdmin={isAdmin} />
+    </div>
+  );
+}
+
+// ── TaskPanel — fiksna desna traka s zadacima u rasporedu ────────────────────
+function TaskPanel({ cats, allData, user, isAdmin }) {
+  const [tasks, setTasks] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTask, setNewTask] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
+
+  useEffect(() => {
+    storage.get(RADIONICA_TASKS_KEY).then(res => {
+      if (res?.value) setTasks(JSON.parse(res.value));
+    }).catch(() => {});
+    // Poll svakih 30s
+    const iv = setInterval(() => {
+      storage.get(RADIONICA_TASKS_KEY).then(res => {
+        if (res?.value) setTasks(JSON.parse(res.value));
+      }).catch(() => {});
+    }, 30000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const saveTasks = async (t) => {
+    setTasks(t);
+    try { await storage.set(RADIONICA_TASKS_KEY, JSON.stringify(t)); } catch (_) {}
+  };
+
+  const setStatus = (id, status) => saveTasks(tasks.map(t => t.id === id ? { ...t, status } : t));
+  const deleteTask = (id) => saveTasks(tasks.filter(t => t.id !== id));
+
+  const addTask = async () => {
+    if (!newTask.opis.trim() || !newTask.datum) return;
+    const item = newTask.itemKey ? (() => {
+      for (const cat of cats) {
+        const items = allData[cat.key] || [];
+        const found = items.find(n => `${cat.key}:${n}` === newTask.itemKey);
+        if (found) return { name: found, icon: cat.icon };
+      }
+      return null;
+    })() : null;
+    const task = {
+      id: Date.now().toString(),
+      itemKey: newTask.itemKey || null,
+      itemName: item?.name || "",
+      catIcon: item?.icon || "📋",
+      datum: newTask.datum,
+      opis: newTask.opis.trim(),
+      status: "pending",
+      created: user.name,
+    };
+    await saveTasks([...tasks, task]);
+    setNewTask({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
+    setShowAdd(false);
+  };
+
+  const today = new Date().toISOString().slice(0,10);
+  const in14 = new Date(Date.now() + 14*86400000).toISOString().slice(0,10);
+  const overdue = tasks.filter(t => t.datum < today && t.status === "pending").sort((a,b) => a.datum.localeCompare(b.datum));
+  const upcoming = tasks.filter(t => t.datum >= today && t.datum <= in14).sort((a,b) => a.datum.localeCompare(b.datum));
+  const pendingCount = overdue.length + upcoming.filter(t => t.status === "pending").length;
+
+  const formatD = (d) => new Date(d + "T12:00:00").toLocaleDateString("hr-HR", { day: "numeric", month: "numeric" });
+  const daysUntil = (d) => Math.round((new Date(d + "T12:00:00") - new Date()) / 86400000);
+
+  return (
+    <div style={{
+      width: 220, flexShrink: 0, background: "#fff",
+      borderLeft: "1.5px solid #f1f5f9", display: "flex", flexDirection: "column",
+      height: "100%", overflowY: "auto"
+    }}>
+      {/* Header */}
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "12px 12px 10px", color: "#fff" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>
+            📋 Zadaci
+            {pendingCount > 0 && (
+              <span style={{ background: "#fff", color: "#C73E3E", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800, marginLeft: 6 }}>{pendingCount}</span>
+            )}
+          </div>
+          <button onClick={() => setShowAdd(s => !s)} style={{
+            background: "rgba(255,255,255,0.25)", border: "none", color: "#fff",
+            borderRadius: 6, width: 24, height: 24, fontSize: 16, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}>+</button>
+        </div>
+      </div>
+
+      {/* Add form */}
+      {showAdd && (
+        <div style={{ padding: "10px 10px 0", borderBottom: "1px solid #f1f5f9" }}>
+          <select value={newTask.itemKey} onChange={e => setNewTask(f => ({ ...f, itemKey: e.target.value }))}
+            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none", marginBottom: 6, background: "#fff" }}>
+            <option value="">— Vozilo (opcionalno) —</option>
+            {cats.filter(c => c.key !== "workers").map(cat => (
+              <optgroup key={cat.key} label={`${cat.icon} ${cat.label}`}>
+                {(allData[cat.key] || []).map(name => (
+                  <option key={name} value={`${cat.key}:${name}`}>{name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <input type="date" value={newTask.datum} onChange={e => setNewTask(f => ({ ...f, datum: e.target.value }))}
+            style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none", marginBottom: 6 }} />
+          <input value={newTask.opis} onChange={e => setNewTask(f => ({ ...f, opis: e.target.value }))}
+            onKeyDown={e => e.key === "Enter" && addTask()}
+            placeholder="Opis zadatka..."
+            style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none", marginBottom: 8 }} />
+          <button onClick={addTask} style={{ width: "100%", padding: "7px 0", background: "#C73E3E", border: "none", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", marginBottom: 8 }}>Dodaj</button>
+        </div>
+      )}
+
+      {/* Zakasnili */}
+      {overdue.length > 0 && (
+        <div style={{ padding: "8px 10px 4px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>⚠️ Kasni</div>
+          {overdue.map(t => (
+            <MiniTaskCard key={t.id} task={t} onDone={() => setStatus(t.id, "done")} onSkip={() => setStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatD={formatD} daysUntil={daysUntil} overdue />
+          ))}
+        </div>
+      )}
+
+      {/* Iduća 2 tjedna */}
+      <div style={{ padding: "8px 10px 4px", flex: 1 }}>
+        {upcoming.length === 0 && overdue.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px 0", color: "#cbd5e1", fontSize: 12 }}>Nema zadataka</div>
+        ) : (
+          <>
+            {upcoming.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Iduća 2 tjedna</div>}
+            {upcoming.map(t => (
+              <MiniTaskCard key={t.id} task={t} onDone={() => setStatus(t.id, "done")} onSkip={() => setStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatD={formatD} daysUntil={daysUntil} />
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── MiniTaskCard — kompaktna kartica zadatka za TaskPanel ─────────────────────
+function MiniTaskCard({ task, onDone, onSkip, onDelete, formatD, daysUntil, overdue }) {
+  const done = task.status === "done";
+  const skipped = task.status === "skipped";
+  const days = daysUntil(task.datum);
+
+  return (
+    <div style={{
+      background: done ? "#f0fdf4" : skipped ? "#f8fafc" : task.priority ? "#fffbeb" : overdue ? "#fef2f2" : "#f8fafc",
+      border: `1px solid ${done ? "#bbf7d0" : skipped ? "#e2e8f0" : task.priority ? "#fde047" : overdue ? "#fecaca" : "#e2e8f0"}`,
+      borderRadius: 8, padding: "8px 8px", marginBottom: 6,
+      opacity: done || skipped ? 0.65 : 1
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {task.itemName && (
+            <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 2 }}>{task.catIcon} {task.itemName}</div>
+          )}
+          <div style={{ fontSize: 12, fontWeight: 600, color: done || skipped ? "#94a3b8" : "#1e293b", textDecoration: done || skipped ? "line-through" : "none", wordBreak: "break-word" }}>{task.opis}</div>
+          <div style={{ display: "flex", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 5px",
+              background: done ? "#dcfce7" : skipped ? "#f1f5f9" : overdue ? "#fee2e2" : days === 0 ? "#fef9c3" : "#eff6ff",
+              color: done ? "#16a34a" : skipped ? "#94a3b8" : overdue ? "#ef4444" : days === 0 ? "#854d0e" : "#3b82f6"
+            }}>
+              {done ? "✓" : skipped ? "✗" : overdue ? `${Math.abs(days)}d kasni` : days === 0 ? "Danas" : days === 1 ? "Sutra" : `${days}d`}
+            </span>
+            {task.priority && !done && !skipped && (
+              <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 5px", background: "#fef9c3", color: "#854d0e" }}>⚡</span>
+            )}
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 }}>
+          {!done && !skipped && (
+            <>
+              <button onClick={onDone} style={{ background: "#dcfce7", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer" }}>✓</button>
+              <button onClick={onSkip} style={{ background: "#fef2f2", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer" }}>✗</button>
+            </>
+          )}
+          {(done || skipped) && (
+            <button onClick={onDone} style={{ background: "#f1f5f9", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 10, cursor: "pointer", color: "#94a3b8" }}>↩</button>
+          )}
+          {onDelete && <button onClick={onDelete} style={{ background: "#fef2f2", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 10, cursor: "pointer", color: "#ef4444" }}>🗑</button>}
+        </div>
+      </div>
     </div>
   );
 }
