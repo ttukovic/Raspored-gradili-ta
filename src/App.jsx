@@ -48,9 +48,9 @@ const initialWorkers = [
   "Pejčan", "Šmit", "Dašić",
   "Mirza", "Adnan", "Darko", "Ivica", "Katija",
 ];
-const initialTrucks    = ["TGS","3349","K48","K27","Suz 1841","Suz 823","Suz 7833","1836 / 2x","PL-MAN","760","K10","1523","Mitsubishi","Master C."];
-const initialTrailers  = []; // korisnik dodaje
-const initialMachines  = []; // korisnik dodaje
+const initialTrucks = ["TGS","3349","K48","K27","Suz 1841","Suz 823","Suz 7833","1836 / 2x","PL-MAN","760","K10","1523","Mitsubishi","Master C."];
+const initialTrailers = []; // korisnik dodaje
+const initialMachines = []; // korisnik dodaje
 
 const siteNames = []; // novi dan kreće prazan — inženjer sam dodaje gradilišta
 const PERMANENT_SITES = ["Komin", "Fali"]; // uvijek vidljive, uvijek na dnu
@@ -61,7 +61,7 @@ const makeEmptySites = () => [
 ];
 
 // ── Storage ───────────────────────────────────────────────────────────────────
-const dateKey  = (d) => `raspored-day-${d}`;
+const dateKey = (d) => `raspored-day-${d}`;
 const BAZA_KEY = `raspored-baza-v2`;
 const ITEM_DETAILS_KEY = `raspored-item-details`; // detalji o vozilima/strojevima/svim stavkama
 const RADIONICA_KEY = `gradprom-radionica`;
@@ -80,7 +80,7 @@ const LANG = {
     analiza: "Analiza", ispisi: "Ispiši", izbornik: "Izbornik",
     natrag: "← Natrag", odjava: "← Odjava", radnici: "Radnici",
     kamioni: "Kamioni", prikolice: "Prikolice", strojevi: "Strojevi",
-    ucitavanje: "Učitavanje...", spremljeno: "✓ Spremljeno",
+    ucitavanje: "Učitavanje...", spremljeno: " Spremljeno",
     danas: "Danas", gradiliste: "Gradilište", postavke: "Postavke",
   },
   en: {
@@ -88,23 +88,23 @@ const LANG = {
     analiza: "Analytics", ispisi: "Print", izbornik: "← Menu",
     natrag: "← Back", odjava: "← Logout", radnici: "Workers",
     kamioni: "Trucks", prikolice: "Trailers", strojevi: "Machines",
-    ucitavanje: "Loading...", spremljeno: "✓ Saved",
+    ucitavanje: "Loading...", spremljeno: " Saved",
     danas: "Today", gradiliste: "Site", postavke: "Settings",
   },
 };
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
-const fmt   = (d) => d.toISOString().slice(0, 10);
+const fmt = (d) => d.toISOString().slice(0, 10);
 const today = () => fmt(new Date());
 const addDays = (dateStr, n) => { const d = new Date(dateStr); d.setDate(d.getDate() + n); return fmt(d); };
-const hrDate  = (dateStr) => new Date(dateStr + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
+const hrDate = (dateStr) => new Date(dateStr + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "numeric", year: "numeric" });
 
 // ── Category config ───────────────────────────────────────────────────────────
 const DEFAULT_CATS = [
-  { key: "workers",  label: "Radnici",   icon: "👷", color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
-  { key: "trucks",   label: "Kamioni",   icon: "🚛", color: "#f97316", bg: "#fff7ed", border: "#f97316" },
-  { key: "trailers", label: "Prikolice", icon: "🚚", color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
-  { key: "machines", label: "Strojevi",  icon: "⚙️", color: "#059669", bg: "#ecfdf5", border: "#059669" },
+  { key: "workers", label: "Radnici", icon: "", color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
+  { key: "trucks", label: "Kamioni", icon: "", color: "#f97316", bg: "#fff7ed", border: "#f97316" },
+  { key: "trailers", label: "Prikolice", icon: "", color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
+  { key: "machines", label: "Strojevi", icon: "Postavke", color: "#059669", bg: "#ecfdf5", border: "#059669" },
 ];
 const CATS_KEY = `raspored-categories`;
 // Paleta boja za nove kategorije koje admin doda
@@ -142,23 +142,23 @@ function MiniLogo({ size = 28 }) {
       width: size, height: size, borderRadius: size * 0.28, background: BRAND_RED,
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.55, color: "#fff", flexShrink: 0
-    }}>🏗️</div>
+    }}></div>
   );
 }
 
 // ── Engineers ─────────────────────────────────────────────────────────────────
 const ENGINEERS = [
   { name: "Tomislav", pin: "1001" },
-  { name: "Tihomir",  pin: "1002" },
-  { name: "Silvije",  pin: "1003" },
-  { name: "Igor",     pin: "1004" },
-  { name: "Antonio",  pin: "1005" },
-  { name: "Damir",    pin: "1006", admin: true },
-  { name: "Tin",      pin: "1007", admin: true },
-  { name: "Gordana",  pin: "1008" },
-  { name: "Ena",      pin: "1009" },
-  { name: "Anita",    pin: "1010" },
-  { name: "Darko",    pin: "1011" },
+  { name: "Tihomir", pin: "1002" },
+  { name: "Silvije", pin: "1003" },
+  { name: "Igor", pin: "1004" },
+  { name: "Antonio", pin: "1005" },
+  { name: "Damir", pin: "1006", admin: true },
+  { name: "Tin", pin: "1007", admin: true },
+  { name: "Gordana", pin: "1008" },
+  { name: "Ena", pin: "1009" },
+  { name: "Anita", pin: "1010" },
+  { name: "Darko", pin: "1011" },
 ];
 
 // ── useSettings hook ───────────────────────────────────────────────────────────
@@ -190,8 +190,8 @@ function applyFontSize(size) {
 // Defaultne boje (koriste se ako korisnik nije promijenio)
 const DEFAULT_UI_COLOR = "#DF5050";
 const DEFAULT_CAT_COLORS = {
-  workers:  { color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
-  trucks:   { color: "#f97316", bg: "#fff7ed", border: "#f97316" },
+  workers: { color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
+  trucks: { color: "#f97316", bg: "#fff7ed", border: "#f97316" },
   trailers: { color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
   machines: { color: "#059669", bg: "#ecfdf5", border: "#059669" },
 };
@@ -296,13 +296,13 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
       }}>
         <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1e293b" }}>⚙️ Postavke</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1e293b" }}>Postavke Postavke</h3>
           <span style={{ fontSize: 13, color: "#94a3b8" }}>{user.name}</span>
         </div>
 
         {/* Veličina fonta */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔠 Veličina teksta</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}> Veličina teksta</div>
           <div style={{ display: "flex", gap: 8 }}>
             {[["small", "Mala", "13px"], ["normal", "Normalna", "15px"], ["large", "Velika", "18px"]].map(([val, label, size]) => (
               <button key={val} onClick={() => handleFontSize(val)} style={{
@@ -318,7 +318,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
 
         {/* Boje sučelja */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🎨 Boje sučelja</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}> Boje sučelja</div>
 
           {/* UI boja (header, gumbi) */}
           <div style={{ marginBottom: 14 }}>
@@ -349,10 +349,10 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
 
         {/* Promjena PIN-a */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔑 Promjena PIN-a</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}> Promjena PIN-a</div>
           {pinSuccess && (
             <div style={{ background: "#ecfdf5", borderRadius: 10, padding: "10px 14px", color: "#059669", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-              ✅ PIN uspješno promijenjen! Novi PIN je aktivan odmah.
+               PIN uspješno promijenjen! Novi PIN je aktivan odmah.
             </div>
           )}
           {pinStep === 0 && !pinSuccess && (
@@ -391,7 +391,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
   );
 }
 
-// ── SettingsButton — mala ikona ⚙️ za gornji desni kut ────────────────────────
+// ── SettingsButton — mala ikona Postavke za gornji desni kut ────────────────────────
 function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSaveColors }) {
   const [open, setOpen] = useState(false);
   return (
@@ -401,7 +401,7 @@ function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSa
         borderRadius: 8, width: 32, height: 32, fontSize: 16,
         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0
-      }}>⚙️</button>
+      }}>Postavke</button>
       {open && <SettingsPanel user={user} onClose={() => setOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />}
     </>
   );
@@ -424,7 +424,7 @@ function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd
         cursor: draggable ? "grab" : onClick ? "pointer" : "default",
         opacity: isDragging ? 0.4 : 1,
       }}>
-      {warn && "⚠️ "}{label}
+      {warn && "! "}{label}
       {isBirthday && <span style={{ fontSize: 11, marginLeft: 2 }}>🎂</span>}
       {hasNote && <span style={{ fontSize: 10, marginLeft: 2 }}>{noteEmoji}</span>}
       {onRemove && (
@@ -448,11 +448,11 @@ function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose, isVe
       }}>
         <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>{isVehicle ? "🔧 Kvar / napomena" : "📝 Napomena"}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>{isVehicle ? " Kvar / napomena" : "Napomena"}</div>
           <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{worker} · {siteName}</div>
           {isVehicle && (
             <div style={{ background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, padding: "8px 12px", marginTop: 10, fontSize: 12, color: "#854d0e", fontWeight: 600 }}>
-              ⚡ Napomena će automatski kreirati prioritetni zadatak u Radionici za danas!
+              ! Napomena će automatski kreirati prioritetni zadatak u Radionici za danas!
             </div>
           )}
         </div>
@@ -586,7 +586,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
             id: Date.now().toString(),
             itemKey: `${catKey}:${itemName}`,
             itemName,
-            catIcon: "🔧",
+            catIcon: "",
             datum: today,
             opis: text,
             status: "pending",
@@ -608,7 +608,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: "#1e293b" }}>{site.name}</span>
-        {!readOnly && !site.permanent && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>🗑</button>}
+        {!readOnly && !site.permanent && <button onClick={onDelete} style={{ background: "none", border: "none", color: "#cbd5e1", fontSize: 18, cursor: "pointer" }}>Obriši</button>}
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -696,13 +696,13 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
 // ── ItemDetailScreen ───────────────────────────────────────────────────────────
 function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave, isWorker }) {
   const [form, setForm] = useState({
-    model:        details?.model        || "",
-    godina:       details?.godina       || "",
+    model: details?.model || "",
+    godina: details?.godina || "",
     registracija: details?.registracija || "",
-    cijena:       details?.cijena       || "",
-    datumKupnje:  details?.datumKupnje  || "",
+    cijena: details?.cijena || "",
+    datumKupnje: details?.datumKupnje || "",
     datumRodenja: details?.datumRodenja || "",
-    napomena:     details?.napomena     || "",
+    napomena: details?.napomena || "",
   });
   const [saved, setSaved] = useState(false);
 
@@ -773,7 +773,7 @@ function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave, is
           border: "none", color: "#fff", borderRadius: 14,
           fontSize: 16, fontWeight: 800, cursor: "pointer",
           transition: "background 0.3s"
-        }}>{saved ? "✓ Spremljeno!" : "Spremi podatke"}</button>
+        }}>{saved ? " Spremljeno!" : "Spremi podatke"}</button>
       </div>
     </div>
   );
@@ -789,7 +789,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
   const [editValue, setEditValue] = useState("");
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatLabel, setNewCatLabel] = useState("");
-  const [newCatIcon, setNewCatIcon] = useState("🔧");
+  const [newCatIcon, setNewCatIcon] = useState("");
   const [confirmDeleteCat, setConfirmDeleteCat] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null); // { name, catKey }
   const [allDetails, setAllDetails] = useState({});
@@ -816,7 +816,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
       <ItemDetailScreen
         item={selectedItem.name}
         catLabel={cat_?.label || selectedItem.catKey}
-        catIcon={cat_?.icon || "📋"}
+        catIcon={cat_?.icon || ""}
         isWorker={selectedItem.catKey === "workers"}
         onBack={() => setSelectedItem(null)}
         details={getItemDetails(selectedItem.catKey, selectedItem.name)}
@@ -863,9 +863,9 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
   const handleAddCategory = () => {
     const label = newCatLabel.trim();
     if (!label) return;
-    onAddCategory(label, newCatIcon.trim() || "🔧");
+    onAddCategory(label, newCatIcon.trim() || "");
     setNewCatLabel("");
-    setNewCatIcon("🔧");
+    setNewCatIcon("");
     setShowAddCat(false);
   };
 
@@ -912,7 +912,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
             background: "#fef2f2", border: "1.5px solid #fecaca", color: "#dc2626",
             borderRadius: 10, padding: "8px 12px", fontSize: 12, fontWeight: 600,
             cursor: "pointer", marginBottom: 12, display: "block"
-          }}>🗑️ Obriši cijeli izbornik "{cat?.label}"</button>
+          }}>Obriši Obriši cijeli izbornik "{cat?.label}"</button>
         )}
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -944,8 +944,8 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
                     onKeyDown={e => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setEditItem(null); }}
                     style={{ flex: 1, border: "1.5px solid #C73E3E", borderRadius: 8, padding: "6px 10px", fontSize: 14, outline: "none" }}
                   />
-                  <button onClick={confirmRename} style={{ background: "#C73E3E", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✓</button>
-                  <button onClick={() => setEditItem(null)} style={{ background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 13, cursor: "pointer" }}>✕</button>
+                  <button onClick={confirmRename} style={{ background: "#C73E3E", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}></button>
+                  <button onClick={() => setEditItem(null)} style={{ background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 13, cursor: "pointer" }}></button>
                 </div>
               ) : (
                 /* Normal mode */
@@ -958,8 +958,8 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
                     {hasDetails && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6", display: "inline-block", flexShrink: 0 }} />}
                   </button>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => startEdit(item)} style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#64748b", borderRadius: 8, padding: "5px 10px", fontSize: 13, cursor: "pointer" }}>✏️</button>
-                    <button onClick={() => setConfirmDelete(item)} style={{ background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 8, padding: "5px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🗑</button>
+                    <button onClick={() => startEdit(item)} style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#64748b", borderRadius: 8, padding: "5px 10px", fontSize: 13, cursor: "pointer" }}></button>
+                    <button onClick={() => setConfirmDelete(item)} style={{ background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 8, padding: "5px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Obriši</button>
                   </div>
                 </>
               )}
@@ -976,7 +976,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
             <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
             <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>🗑️</div>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>Obriši</div>
               <div style={{ fontWeight: 700, fontSize: 16, color: "#1e293b" }}>Obriši "{confirmDelete}"?</div>
               <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Briše se samo iz baze — postojeći rasporedi ostaju nepromijenjeni.</div>
             </div>
@@ -1000,7 +1000,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
               placeholder="Alati" style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "11px 14px", fontSize: 15, outline: "none", marginBottom: 14 }} />
             <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Emoji ikona</label>
             <input value={newCatIcon} onChange={e => setNewCatIcon(e.target.value)}
-              placeholder="🔧" style={{ width: 80, boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "11px 14px", fontSize: 20, outline: "none", marginBottom: 18, textAlign: "center" }} />
+              placeholder="" style={{ width: 80, boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "11px 14px", fontSize: 20, outline: "none", marginBottom: 18, textAlign: "center" }} />
             <button onClick={handleAddCategory} style={{ background: "#1e40af", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", width: "100%", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Dodaj izbornik</button>
           </div>
         </div>
@@ -1012,7 +1012,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
             <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
             <div style={{ textAlign: "center", marginBottom: 20 }}>
-              <div style={{ fontSize: 36, marginBottom: 8 }}>⚠️</div>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>!</div>
               <div style={{ fontWeight: 700, fontSize: 16, color: "#1e293b" }}>Obriši izbornik "{cats.find(c => c.key === confirmDeleteCat)?.label}"?</div>
               <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 6 }}>Ovo briše cijeli izbornik i sve njegove stavke sa svih gradilišta. Ne može se poništiti.</div>
             </div>
@@ -1067,8 +1067,8 @@ function PrintModal({ sites, date, onClose, cats }) {
   const zoom = (() => {
     const HEADER_PX = 70;
     const SITE_HEADER_PX = 26; // naziv gradilišta + linija + razmak
-    const ROW_PX = 16.5;       // jedan red (radnik/kamion/...)
-    const SITE_GAP_PX = 12;    // razmak između kartica
+    const ROW_PX = 16.5; // jedan red (radnik/kamion/...)
+    const SITE_GAP_PX = 12; // razmak između kartica
     const FOOTER_PX = 8; // mali sigurnosni razmak na dnu
 
     const siteHeights = regularSites.map(site => SITE_HEADER_PX + rowsOf(site) * ROW_PX + SITE_GAP_PX);
@@ -1101,7 +1101,7 @@ function PrintModal({ sites, date, onClose, cats }) {
             <div style={{ fontSize: 24, fontWeight: 900, color: "#1e293b" }}>{dateLabel}</div>
           </div>
           <div style={{ textAlign: "right", fontSize: 13, color: "#64748b" }}>
-            <span>👷 Radnici ukupno: </span>
+            <span> Radnici ukupno: </span>
             <strong style={{ color: "#1e293b", fontSize: 16 }}>
               {sites.reduce((a, s) => a + (s.workers || []).length, 0)}
             </strong>
@@ -1189,7 +1189,7 @@ function PrintModal({ sites, date, onClose, cats }) {
         <div style={{ background: "#fff", width: 794, maxWidth: "calc(100% - 32px)", borderRadius: 16, padding: "32px 28px", boxSizing: "border-box", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
           {printableContent}
           <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button onClick={() => window.print()} style={{ flex: 1, padding: "13px 0", background: "linear-gradient(135deg, #C73E3E, #DF5050)", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>🖨️ Ispiši / Spremi PDF</button>
+            <button onClick={() => window.print()} style={{ flex: 1, padding: "13px 0", background: "linear-gradient(135deg, #C73E3E, #DF5050)", color: "#fff", border: "none", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Ispiši / Spremi PDF</button>
             <button onClick={onClose} style={{ padding: "13px 20px", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Zatvori</button>
           </div>
         </div>
@@ -1228,7 +1228,7 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
         border: "none", borderRadius: "10px 0 0 10px", padding: "16px 8px",
         fontSize: 13, fontWeight: 700, cursor: "pointer", writingMode: "vertical-rl",
         boxShadow: "-2px 0 10px rgba(0,0,0,0.15)", zIndex: 500
-      }}>⬅ Brzi izbornik</button>
+      }}> Brzi izbornik</button>
     );
   }
 
@@ -1241,7 +1241,7 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
       {/* Header / close */}
       <div style={{ padding: "12px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Brzi izbornik</span>
-        <button onClick={onToggle} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: 2 }}>✕</button>
+        <button onClick={onToggle} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: 2 }}></button>
       </div>
 
       {/* Category tabs */}
@@ -1333,7 +1333,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
           <MiniLogo size={34} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>Admin pregled</div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>📊 Analiza aktivnosti</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>Analiza aktivnosti</div>
           </div>
         </div>
       </div>
@@ -1378,7 +1378,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
 
         {/* PIN popis — vidljiv samo adminima */}
         <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginTop: 16, boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 12 }}>🔑 Popis korisnika i PINova</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 12 }}> Popis korisnika i PINova</div>
           {ENGINEERS.map((e, i) => (
             <div key={e.name} style={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -1390,7 +1390,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
               </div>
               <span style={{ fontSize: 16, fontWeight: 800, color: pinsOverride[e.name] ? "#C73E3E" : "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>
                 {pinsOverride[e.name] || e.pin}
-                {pinsOverride[e.name] && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-color, #C73E3E)", marginLeft: 6, letterSpacing: 0 }}>✏️</span>}
+                {pinsOverride[e.name] && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-color, #C73E3E)", marginLeft: 6, letterSpacing: 0 }}></span>}
               </span>
             </div>
           ))}
@@ -1423,7 +1423,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
           width: 36, height: 36, fontSize: 18, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)"
-        }}>⚙️</button>
+        }}>Postavke</button>
       )}
       {settingsOpen && user && (
         <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />
@@ -1434,7 +1434,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
         {LOGO_URL ? (
           <img src={LOGO_URL} alt="Gradprom" style={{ height: 80, objectFit: "contain", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))" }} />
         ) : (
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: BRAND_RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}>🏗️</div>
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: BRAND_RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}></div>
         )}
         <div style={{ fontSize: 20, fontWeight: 800, marginTop: 12, color: "#1e293b" }}>
           {user ? `Bok, ${user.name}!` : "Dobrodošli"}
@@ -1449,7 +1449,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
         <button onClick={() => onSelect("sati")} style={{
           ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
         }}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}>⏱️</span>
+          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
         </button>
 
@@ -1457,7 +1457,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
         <button onClick={() => onSelect("raspored")} style={{
           ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
         }}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}>📅</span>
+          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
         </button>
 
@@ -1465,7 +1465,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
         <button onClick={() => onSelect("radionica")} style={{
           ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
         }}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}>🔧</span>
+          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
         </button>
 
@@ -1622,7 +1622,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
           <MiniLogo size={34} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{user.name}</div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>⏱️ Radni sati</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}> Radni sati</div>
           </div>
           </div>
           {settingsBtn}
@@ -1642,13 +1642,13 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
             fontSize: 13, fontWeight: 700, cursor: "pointer",
             background: view === "calendar" ? "#fff" : "rgba(255,255,255,0.2)",
             color: view === "calendar" ? "#C73E3E" : "#fff"
-          }}>📅 Po danu</button>
+          }}> Po danu</button>
           <button onClick={() => { setView("workers"); setSelectedDay(null); }} style={{
             flex: 1, padding: "8px 0", border: "none", borderRadius: "8px 8px 0 0",
             fontSize: 13, fontWeight: 700, cursor: "pointer",
             background: view === "workers" ? "#fff" : "rgba(255,255,255,0.2)",
             color: view === "workers" ? "#C73E3E" : "#fff"
-          }}>👷 Po radniku</button>
+          }}> Po radniku</button>
         </div>
       </div>
 
@@ -1975,7 +1975,7 @@ function LoginScreen({ onLogin }) {
               width: 56, height: 56, borderRadius: 14, background: BRAND_RED,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 26, margin: "0 auto 8px", color: "#fff"
-            }}>🏗️</div>
+            }}></div>
           )}
           <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 14 }}>Upiši PIN za nastavak</p>
         </div>
@@ -2117,14 +2117,14 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                 fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",
                 background:done?"#dcfce7":skipped?"#f1f5f9":overdue?"#fee2e2":days===0?"#fef9c3":"#eff6ff",
                 color:done?"#16a34a":skipped?"#94a3b8":overdue?"#ef4444":days===0?"#854d0e":"#3b82f6"
-              }}>{done?"✓":skipped?"✗":overdue?`${Math.abs(days)}d`:days===0?"Danas":days===1?"Sutra":`${days}d`}</span>
+              }}>{done?"":skipped?"":overdue?`${Math.abs(days)}d`:days===0?"Danas":days===1?"Sutra":`${days}d`}</span>
               {t.priority&&!done&&!skipped&&<span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",background:"#fef9c3",color:"#854d0e"}}>Prioritet</span>}
             </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-            {!done&&!skipped&&<><button onClick={onDone} style={{background:"#dcfce7",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}>✓</button><button onClick={onSkip} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}>✗</button></>}
+            {!done&&!skipped&&<><button onClick={onDone} style={{background:"#dcfce7",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}></button><button onClick={onSkip} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}></button></>}
             {(done||skipped)&&<button onClick={onReset} style={{background:"#f1f5f9",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#94a3b8"}}>↩</button>}
-            {onDelete&&<button onClick={onDelete} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#ef4444"}}>🗑</button>}
+            {onDelete&&<button onClick={onDelete} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#ef4444"}}>Obriši</button>}
           </div>
         </div>
       </div>
@@ -2160,7 +2160,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
         <div style={{padding:16}}>
           <button onClick={()=>setShowAddServis(true)} style={{width:"100%",marginBottom:14,padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#EF6B6B 0%,#DF5050 55%,#C73E3E 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>+ Novi servisni unos</button>
           {entries.length===0?(
-            <div style={{textAlign:"center",padding:48,color:"#94a3b8"}}><div style={{fontSize:36,marginBottom:10}}>🔧</div><div>Nema servisnih unosa.</div></div>
+            <div style={{textAlign:"center",padding:48,color:"#94a3b8"}}><div style={{fontSize:36,marginBottom:10}}></div><div>Nema servisnih unosa.</div></div>
           ):(
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {entries.map(e=>(
@@ -2170,7 +2170,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                       <div style={{fontSize:14,fontWeight:700,color:"#1e293b"}}>{e.opis}</div>
                       <div style={{fontSize:12,color:"#94a3b8",marginTop:2}}>{new Date(e.datum+"T12:00:00").toLocaleDateString("hr-HR",{day:"numeric",month:"long",year:"numeric"})} · {e.mehanicар}</div>
                     </div>
-                    {isAdmin&&<button onClick={()=>deleteServisEntry(selectedItem.key,e.id)} style={{background:"#fef2f2",border:"none",color:"#ef4444",borderRadius:8,padding:"4px 8px",fontSize:12,cursor:"pointer"}}>🗑</button>}
+                    {isAdmin&&<button onClick={()=>deleteServisEntry(selectedItem.key,e.id)} style={{background:"#fef2f2",border:"none",color:"#ef4444",borderRadius:8,padding:"4px 8px",fontSize:12,cursor:"pointer"}}>Obriši</button>}
                   </div>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                     {e.km&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:6,padding:"2px 8px",fontSize:12,fontWeight:600}}>{e.km.toLocaleString()} km</span>}
@@ -2398,7 +2398,7 @@ function PublicScheduleView({ onBack }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={30} />
-          <div style={{ fontSize: 18, fontWeight: 800 }}>📅 Raspored</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}> Raspored</div>
         </div>
         {/* Danas / Sutra tabs */}
         <div style={{ display: "flex", gap: 4 }}>
@@ -2556,7 +2556,7 @@ function PublicHoursView({ onBack }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={30} />
-          <div style={{ fontSize: 18, fontWeight: 800 }}>⏱️ Radni sati</div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}> Radni sati</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 16 }}>
           <button onClick={() => changeMonth(-1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>‹</button>
@@ -2618,18 +2618,18 @@ function PublicApp() {
         {LOGO_URL ? (
           <img src={LOGO_URL} alt="Gradprom" style={{ height: 80, objectFit: "contain", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))" }} />
         ) : (
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: DEFAULT_UI_COLOR, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}>🏗️</div>
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: DEFAULT_UI_COLOR, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}></div>
         )}
         <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12, color: "#1e293b" }}>GRAĐPROM sustav</div>
         <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Prikaz samo za čitanje</div>
       </div>
       <div style={{ display: "flex", gap: 14, width: "100%", maxWidth: 340 }}>
         <button onClick={() => setScreen("sati")} style={cardStyle}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}>⏱️</span>
+          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Radni sati</div>
         </button>
         <button onClick={() => setScreen("raspored")} style={cardStyle}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}>📅</span>
+          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Raspored</div>
         </button>
       </div>
@@ -3084,9 +3084,9 @@ export default function App() {
               </div>
               <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5, marginTop: 2 }}>{hrDate(currentDate)}</div>
               <div style={{ fontSize: 12, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {readOnly && <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>📖 Samo čitanje</span>}
-                {!isToday && user.admin && <span style={{ background: "rgba(255,200,0,0.3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>🔑 Admin edit</span>}
-                {savedFlash && <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}>✓ Spremljeno</span>}
+                {readOnly && <span style={{ background: "rgba(255,255,255,0.2)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}> Samo čitanje</span>}
+                {!isToday && user.admin && <span style={{ background: "rgba(255,200,0,0.3)", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}> Admin edit</span>}
+                {savedFlash && <span style={{ background: "rgba(255,255,255,0.25)", borderRadius: 6, padding: "2px 8px", fontSize: 11 }}> Spremljeno</span>}
               {lastEditor && !savedFlash && <span style={{ opacity: 0.75, fontSize: 11 }}>Zadnji: {lastEditor}</span>}
             </div>
             </div>
@@ -3104,7 +3104,7 @@ export default function App() {
               {duplicateWorkers.size > 0 && (
                 <div style={{ background: "#ef4444", borderRadius: 8, padding: "5px 10px", textAlign: "center" }}>
                   <div style={{ fontSize: 16, fontWeight: 800 }}>{duplicateWorkers.size}</div>
-                  <div style={{ fontSize: 9 }}>⚠️</div>
+                  <div style={{ fontSize: 9 }}>!</div>
                 </div>
               )}
             </div>
@@ -3135,7 +3135,7 @@ export default function App() {
       {/* Duplicate warning */}
       {duplicateWorkers.size > 0 && (
         <div style={{ background: "#fef2f2", borderBottom: "2px solid #fca5a5", padding: "10px 16px", display: "flex", gap: 8 }}>
-          <span>⚠️</span>
+          <span>!</span>
           <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>Radnici na 2+ gradilišta: {[...duplicateWorkers].join(", ")}</span>
         </div>
       )}
@@ -3193,11 +3193,11 @@ export default function App() {
       {/* Bottom buttons */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(248,250,252,0.95)", backdropFilter: "blur(8px)", borderTop: "1px solid #e2e8f0", padding: "12px 16px", display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
         <button onClick={() => setScreen("landing")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>&#8592; Izbornik</button>
-        <button onClick={() => setScreen("baza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e40af", cursor: "pointer" }}>📋 Baza</button>
+        <button onClick={() => setScreen("baza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e40af", cursor: "pointer" }}>Baza</button>
         {user.admin && (
-          <button onClick={() => setScreen("analiza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#059669", cursor: "pointer" }}>📊 Analiza</button>
+          <button onClick={() => setScreen("analiza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#059669", cursor: "pointer" }}>Analiza</button>
         )}
-        <button onClick={() => setShowPrint(true)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", cursor: "pointer" }}>🖨️ Ispiši</button>
+        <button onClick={() => setShowPrint(true)} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e293b", cursor: "pointer" }}>Ispiši</button>
         {!readOnly && (
           <button onClick={() => setShowAddSite(true)} style={{ background: "linear-gradient(135deg, #C73E3E, #DF5050)", border: "none", borderRadius: 12, padding: "10px 18px", fontSize: 13, fontWeight: 700, color: "#fff", cursor: "pointer" }}>+ Gradilište</button>
         )}
