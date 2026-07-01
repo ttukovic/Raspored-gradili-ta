@@ -66,6 +66,7 @@ const BAZA_KEY = `raspored-baza-v2`;
 const ITEM_DETAILS_KEY = `raspored-item-details`; // detalji o vozilima/strojevima/svim stavkama
 const RADIONICA_KEY = `gradprom-radionica`;
 const RADIONICA_TASKS_KEY = `gradprom-radionica-tasks`;
+const RADIONICA_CATS_KEY = `gradprom-radionica-cats`; // extra kategorije samo za radionicu
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
@@ -158,7 +159,8 @@ const ENGINEERS = [
   { name: "Gordana", pin: "1008" },
   { name: "Ena", pin: "1009" },
   { name: "Anita", pin: "1010" },
-  { name: "Darko", pin: "1011" },
+  { name: "Darko", pin: "1011", radionica: true },
+  { name: "Kralj Matija", pin: "1012", radionica: true },
 ];
 
 // ── useSettings hook ───────────────────────────────────────────────────────────
@@ -1999,6 +2001,7 @@ function LoginScreen({ onLogin }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── RadionicaScreen ───────────────────────────────────────────────────────────
 function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) {
+  const isRadionica = isAdmin || user?.radionica;
   const [selectedCat, setSelectedCat] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [servisData, setServisData] = useState({});
@@ -2006,22 +2009,68 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
   const [loading, setLoading] = useState(true);
   const [showAddServis, setShowAddServis] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [showAddCat, setShowAddCat] = useState(false);
   const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
   const [newTask, setNewTask] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
+  const [newCat, setNewCat] = useState({ label: "", icon: "" });
+  const [newItemName, setNewItemName] = useState("");
+  const [extraCats, setExtraCats] = useState([]); // extra kategorije samo za radionicu
+  const [extraData, setExtraData] = useState({}); // { catKey: ["naziv1",...] }
 
-  const radionicaCats = cats.filter(c => c.key !== "workers");
+  // Spoji raspored kategorije (bez radnika) + radionica-only
+  const radionicaCats = [...cats.filter(c => c.key !== "workers"), ...extraCats];
+  const allRadionicaData = { ...allData, ...extraData };
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       storage.get(RADIONICA_KEY).catch(() => null),
       storage.get(RADIONICA_TASKS_KEY).catch(() => null),
-    ]).then(([sRes, tRes]) => {
+      storage.get(RADIONICA_CATS_KEY).catch(() => null),
+    ]).then(([sRes, tRes, cRes]) => {
       if (sRes?.value) setServisData(JSON.parse(sRes.value));
       if (tRes?.value) setTasks(JSON.parse(tRes.value));
+      if (cRes?.value) {
+        const saved = JSON.parse(cRes.value);
+        setExtraCats(saved.cats || []);
+        setExtraData(saved.data || {});
+      }
       setLoading(false);
     });
   }, []);
+
+  const saveExtraCats = async (newCats, newData) => {
+    setExtraCats(newCats);
+    setExtraData(newData);
+    try { await storage.set(RADIONICA_CATS_KEY, JSON.stringify({ cats: newCats, data: newData })); } catch (_) {}
+  };
+
+  const addCategory = async () => {
+    const label = newCat.label.trim();
+    if (!label) return;
+    const key = `rad_${Date.now().toString(36)}`;
+    const cat = { key, label, icon: "" };
+    await saveExtraCats([...extraCats, cat], { ...extraData, [key]: [] });
+    setNewCat({ label: "", icon: "" });
+    setShowAddCat(false);
+  };
+
+  const addItemToExtraCat = async (catKey) => {
+    const name = newItemName.trim();
+    if (!name || (extraData[catKey] || []).includes(name)) return;
+    const updated = { ...extraData, [catKey]: [...(extraData[catKey] || []), name].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})) };
+    await saveExtraCats(extraCats, updated);
+    setNewItemName("");
+  };
+
+  const deleteItemFromExtraCat = async (catKey, name) => {
+    const updated = { ...extraData, [catKey]: (extraData[catKey] || []).filter(n => n !== name) };
+    await saveExtraCats(extraCats, updated);
+  };
+
+  const deleteExtraCat = async (catKey) => {
+    await saveExtraCats(extraCats.filter(c => c.key !== catKey), Object.fromEntries(Object.entries(extraData).filter(([k]) => k !== catKey)));
+  };
 
   const saveServis = async (newData) => {
     setServisData(newData);
@@ -2058,7 +2107,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
 
   const addTask = async () => {
     if (!newTask.opis.trim() || !newTask.datum) return;
-    const item = radionicaCats.flatMap(c => (allData[c.key]||[]).map(n => ({key:`${c.key}:${n}`,name:n,icon:c.icon}))).find(i => i.key === newTask.itemKey);
+    const item = radionicaCats.flatMap(c => (allRadionicaData[c.key]||[]).map(n => ({key:`${c.key}:${n}`,name:n,icon:c.icon}))).find(i => i.key === newTask.itemKey);
     const task = {
       id: Date.now().toString(),
       itemKey: newTask.itemKey || null,
@@ -2218,7 +2267,12 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                 <div style={{fontSize:18,fontWeight:800}}>Radionica</div>
               </div>
             </div>
-            {settingsBtn}
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {isRadionica && !selectedCat && (
+                <button onClick={()=>setShowAddCat(true)} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:13,fontWeight:700,cursor:"pointer"}}>+ Kategorija</button>
+              )}
+              {settingsBtn}
+            </div>
           </div>
         </div>
 
@@ -2228,7 +2282,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
           ):!selectedCat?(
             <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center",padding:"8px 0"}}>
               {radionicaCats.map(cat=>{
-                const items=allData[cat.key]||[];
+                const items=allRadionicaData[cat.key]||[];
                 const totalEntries=items.reduce((a,name)=>a+(servisData[`${cat.key}:${name}`]||[]).length,0);
                 return (
                   <button key={cat.key} onClick={()=>setSelectedCat(cat)} style={{
@@ -2251,9 +2305,26 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             </div>
           ):(
             <>
-              <button onClick={()=>setSelectedCat(null)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,color:"#64748b",cursor:"pointer",marginBottom:14}}>← {selectedCat.label}</button>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <button onClick={()=>setSelectedCat(null)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"8px 14px",fontSize:13,fontWeight:600,color:"#64748b",cursor:"pointer"}}>← {selectedCat.label}</button>
+                {isRadionica && extraCats.find(c=>c.key===selectedCat.key) && (
+                  <button onClick={()=>{if(window.confirm("Obriši ovu kategoriju?")) deleteExtraCat(selectedCat.key); setSelectedCat(null);}} style={{background:"#fef2f2",border:"none",color:"#ef4444",borderRadius:8,padding:"6px 10px",fontSize:12,cursor:"pointer"}}>Obriši kategoriju</button>
+                )}
+              </div>
+
+              {/* Dodaj stavku za extra kategorije */}
+              {isRadionica && extraCats.find(c=>c.key===selectedCat.key) && (
+                <div style={{display:"flex",gap:8,marginBottom:14}}>
+                  <input value={newItemName} onChange={e=>setNewItemName(e.target.value)}
+                    onKeyDown={e=>e.key==="Enter"&&addItemToExtraCat(selectedCat.key)}
+                    placeholder={`Dodaj stavku...`}
+                    style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none"}}/>
+                  <button onClick={()=>addItemToExtraCat(selectedCat.key)} style={{background:"#2563eb",color:"#fff",border:"none",borderRadius:10,padding:"10px 16px",fontSize:14,fontWeight:700,cursor:"pointer"}}>+</button>
+                </div>
+              )}
+
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {[...(allData[selectedCat.key]||[])].sort((a,b)=>a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name=>{
+                {[...(allRadionicaData[selectedCat.key]||[])].sort((a,b)=>a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name=>{
                   const key=`${selectedCat.key}:${name}`;
                   const last=getLastServis(key);
                   const total=getTotalCost(key);
@@ -2329,6 +2400,22 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
         )}
       </div>
 
+      {/* Modal za novu kategoriju */}
+      {showAddCat&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",zIndex:2000}} onClick={()=>setShowAddCat(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",padding:"24px 16px 32px",boxSizing:"border-box"}}>
+            <div style={{width:40,height:4,background:"#ddd",borderRadius:2,margin:"0 auto 20px"}}/>
+            <h3 style={{margin:"0 0 16px",fontSize:16,fontWeight:800}}>Nova kategorija (samo Radionica)</h3>
+            <label style={{fontSize:12,fontWeight:600,color:"#64748b",display:"block",marginBottom:4,textTransform:"uppercase"}}>Naziv kategorije</label>
+            <input autoFocus value={newCat.label} onChange={e=>setNewCat(f=>({...f,label:e.target.value}))}
+              onKeyDown={e=>e.key==="Enter"&&addCategory()}
+              placeholder="npr. Alati, Gume, Rezervni dijelovi..."
+              style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",marginBottom:16}}/>
+            <button onClick={addCategory} style={{width:"100%",padding:"13px 0",background:"linear-gradient(180deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%)",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>Dodaj kategoriju</button>
+          </div>
+        </div>
+      )}
+
       {/* Modal za novi zadatak */}
       {showAddTask&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",zIndex:2000}} onClick={()=>setShowAddTask(false)}>
@@ -2341,7 +2428,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
               <option value="">— Odaberi —</option>
               {radionicaCats.map(cat=>(
                 <optgroup key={cat.key} label={cat.label}>
-                  {(allData[cat.key]||[]).map(name=>(
+                  {(allRadionicaData[cat.key]||[]).map(name=>(
                     <option key={name} value={`${cat.key}:${name}`}>{name}</option>
                   ))}
                 </optgroup>
