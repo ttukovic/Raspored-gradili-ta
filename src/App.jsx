@@ -744,7 +744,7 @@ function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave, is
 }
 
 // ── BazaScreen ────────────────────────────────────────────────────────────────
-function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, onDeleteCategory, settingsBtn }) {
+function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, onDeleteCategory, settingsBtn, onRename }) {
   const [tab, setTab] = useState("workers");
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
@@ -812,14 +812,16 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
     setEditValue(name);
   };
 
-  const confirmRename = () => {
+  const confirmRename = async () => {
     const newVal = editValue.trim();
     if (!newVal || newVal === editItem) { setEditItem(null); return; }
-    if (items.includes(newVal)) { setEditItem(null); return; } // već postoji
+    if (items.includes(newVal)) { setEditItem(null); return; }
     const updated = items.map(i => i === editItem ? newVal : i)
       .sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
     onUpdate(tab, updated);
     setEditItem(null);
+    // Propagiraj promjenu kroz sve rasporede, sate i detalje
+    if (onRename) await onRename(tab, editItem, newVal);
   };
 
   const handleAddCategory = () => {
@@ -2232,6 +2234,88 @@ export default function App() {
     }
   };
 
+  // ── Preimenovanje — propagira kroz sve rasporede, sate, detalje i napomene ──
+  const handleRename = async (catKey, oldName, newName) => {
+    try {
+      // 1) Ažuriraj sve rasporede (prošli + budući dani u Supabaseu)
+      const { data: rows } = await supabase
+        .from("raspored")
+        .select("id, data")
+        .like("id", "raspored-day-%");
+      if (rows) {
+        for (const row of rows) {
+          let changed = false;
+          const data = row.data || {};
+          const newSites = (data.sites || []).map(site => {
+            const catItems = site[catKey] || [];
+            if (!catItems.includes(oldName)) return site;
+            changed = true;
+            const newSite = { ...site, [catKey]: catItems.map(v => v === oldName ? newName : v) };
+            // Ažuriraj i napomene ako postoje (samo za radnike)
+            if (site.notes && site.notes[oldName] !== undefined) {
+              const notes = { ...site.notes };
+              notes[newName] = notes[oldName];
+              delete notes[oldName];
+              newSite.notes = notes;
+            }
+            return newSite;
+          });
+          if (changed) {
+            await supabase.from("raspored").upsert({ id: row.id, data: { ...data, sites: newSites }, updated_at: new Date().toISOString() });
+          }
+        }
+      }
+
+      // 2) Ažuriraj radne sate (svi ključevi raspored-hours-*)
+      const { data: hoursRows } = await supabase
+        .from("raspored")
+        .select("id, data")
+        .like("id", "raspored-hours-%");
+      if (hoursRows) {
+        for (const row of hoursRows) {
+          const data = row.data || {};
+          if (data[oldName] !== undefined) {
+            const newData = { ...data, [newName]: data[oldName] };
+            delete newData[oldName];
+            await supabase.from("raspored").upsert({ id: row.id, data: newData, updated_at: new Date().toISOString() });
+          }
+        }
+      }
+
+      // 3) Ažuriraj item detalje (premjesti sa starog ključa na novi)
+      const detailsRes = await storage.get(ITEM_DETAILS_KEY);
+      if (detailsRes?.value) {
+        const details = JSON.parse(detailsRes.value);
+        const oldKey = `${catKey}:${oldName}`;
+        const newKey = `${catKey}:${newName}`;
+        if (details[oldKey]) {
+          details[newKey] = details[oldKey];
+          delete details[oldKey];
+          await storage.set(ITEM_DETAILS_KEY, JSON.stringify(details));
+        }
+      }
+
+      // 4) Ažuriraj trenutno prikazane sites u memoriji
+      if (sites) {
+        const newSites = sites.map(site => {
+          const catItems = site[catKey] || [];
+          if (!catItems.includes(oldName)) return site;
+          const newSite = { ...site, [catKey]: catItems.map(v => v === oldName ? newName : v) };
+          if (site.notes?.[oldName] !== undefined) {
+            const notes = { ...site.notes, [newName]: site.notes[oldName] };
+            delete notes[oldName];
+            newSite.notes = notes;
+          }
+          return newSite;
+        });
+        setSites(newSites);
+      }
+
+    } catch (err) {
+      console.error("Rename propagation error:", err);
+    }
+  };
+
   const addSite = () => {
     if (!newSiteName.trim()) return;
     const emptyCatFields = Object.fromEntries(cats.map(c => [c.key, []]));
@@ -2285,7 +2369,7 @@ export default function App() {
 
   if (screen === "baza") return (
     <div style={{ fontSize: appFont }}>
-      <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} cats={cats} isAdmin={user.admin} onAddCategory={addCategory} onDeleteCategory={deleteCategory} settingsBtn={settingsBtn} />
+      <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} cats={cats} isAdmin={user.admin} onAddCategory={addCategory} onDeleteCategory={deleteCategory} settingsBtn={settingsBtn} onRename={handleRename} />
     </div>
   );
 
