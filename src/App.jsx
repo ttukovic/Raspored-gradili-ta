@@ -406,7 +406,7 @@ function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSa
 }
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
-function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging, onClick, hasNote }) {
+function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging, onClick, hasNote, isBirthday }) {
   const [dragStarted, setDragStarted] = useState(false);
   return (
     <span
@@ -423,6 +423,7 @@ function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd
         opacity: isDragging ? 0.4 : 1,
       }}>
       {warn && "⚠️ "}{label}
+      {isBirthday && <span style={{ fontSize: 11, marginLeft: 2 }}>🎂</span>}
       {hasNote && <span style={{ fontSize: 10, marginLeft: 2 }}>⭐</span>}
       {onRemove && (
         <button onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{
@@ -538,10 +539,19 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 }
 
 // ── SiteCard ──────────────────────────────────────────────────────────────────
-function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats, userColors }) {
-  const [modal, setModal] = useState(null); // cat key or null
+function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats, userColors, itemDetails, currentDate }) {
+  const [modal, setModal] = useState(null);
   const [dragOverCat, setDragOverCat] = useState(null);
-  const [noteModal, setNoteModal] = useState(null); // { worker } or null
+  const [noteModal, setNoteModal] = useState(null);
+
+  // Provjeri je li danas rođendan radnika
+  const isBirthday = (workerName) => {
+    const details = itemDetails?.[`workers:${workerName}`];
+    if (!details?.datumRodenja) return false;
+    const bday = new Date(details.datumRodenja);
+    const today = new Date(currentDate + "T12:00:00");
+    return bday.getDate() === today.getDate() && bday.getMonth() === today.getMonth();
+  };
 
   const addItem = (cat, val) => {
     if (!site[cat].includes(val)) onUpdate({ ...site, [cat]: [...site[cat], val] });
@@ -598,6 +608,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
                   <Badge key={val} label={val} color={getCatColor(cat.key, userColors).color}
                     warn={cat.key === "workers" && duplicateWorkers.has(val)}
                     hasNote={cat.key === "workers" && !!(site.notes?.[val])}
+                    isBirthday={cat.key === "workers" && isBirthday(val)}
                     onClick={cat.key === "workers" && !readOnly ? () => setNoteModal({ worker: val }) : undefined}
                     onRemove={readOnly ? null : () => removeItem(cat.key, val)}
                     draggable={!readOnly}
@@ -1984,6 +1995,13 @@ export default function App() {
     trailers: initialTrailers, machines: initialMachines,
   });
   const [cats, setCats] = useState(DEFAULT_CATS);
+  const [itemDetails, setItemDetails] = useState({});
+
+  useEffect(() => {
+    storage.get(ITEM_DETAILS_KEY).then(res => {
+      if (res?.value) setItemDetails(JSON.parse(res.value));
+    }).catch(() => {});
+  }, []);
   const [loading, setLoading] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
   const [lastEditor, setLastEditor] = useState(null);
@@ -2364,7 +2382,7 @@ export default function App() {
                   duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
                   onDelete={() => deleteSite(site.id)} readOnly={readOnly}
                   dragItem={dragItem} onDragStartItem={handleDragStartItem}
-                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} userColors={userColors} />
+                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} userColors={userColors} itemDetails={itemDetails} currentDate={currentDate} />
               ))}
           </div>
         )}
