@@ -121,7 +121,7 @@ const CAT_COLOR_PALETTE = [
 
 // ── Brand boja (Gradprom) — lako promijeniti kad stigne logo ──
 const BRAND_RED = "#DC2626";
-const BRAND_RED_DARK = "#B91C1C";
+const BRAND_RED_DARK = "#1d4ed8";
 const LOGO_URL = "/logo.png";
 
 // ── MiniLogo — mali logo za zaglavlja svih ekrana (osim landing/login gdje je veći) ──
@@ -188,7 +188,7 @@ function applyFontSize(size) {
 }
 
 // Defaultne boje (koriste se ako korisnik nije promijenio)
-const DEFAULT_UI_COLOR = "#DF5050";
+const DEFAULT_UI_COLOR = "#3b82f6";
 const DEFAULT_CAT_COLORS = {
   workers: { color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
   trucks: { color: "#f97316", bg: "#fff7ed", border: "#f97316" },
@@ -307,9 +307,9 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
             {[["small", "Mala", "13px"], ["normal", "Normalna", "15px"], ["large", "Velika", "18px"]].map(([val, label, size]) => (
               <button key={val} onClick={() => handleFontSize(val)} style={{
                 flex: 1, padding: "12px 0", border: "2px solid",
-                borderColor: fontSize === val ? "#C73E3E" : "#e2e8f0",
+                borderColor: fontSize === val ? "#2563eb" : "#e2e8f0",
                 borderRadius: 12, background: fontSize === val ? "#fef2f2" : "#fff",
-                color: fontSize === val ? "#C73E3E" : "#64748b",
+                color: fontSize === val ? "#2563eb" : "#64748b",
                 fontSize: size, fontWeight: 700, cursor: "pointer"
               }}>{label}</button>
             ))}
@@ -374,7 +374,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
               {pinError && <p style={{ color: "#ef4444", fontSize: 13, margin: 0, textAlign: "center" }}>{pinError}</p>}
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { setPinStep(0); setPinOld(""); setPinNew(""); setPinConfirm(""); setPinError(""); }} style={{ flex: 1, padding: "11px 0", border: "1.5px solid #e2e8f0", borderRadius: 10, background: "#f1f5f9", color: "#64748b", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Odustani</button>
-                <button onClick={handlePinChange} style={{ flex: 1, padding: "11px 0", border: "none", borderRadius: 10, background: "#C73E3E", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Potvrdi</button>
+                <button onClick={handlePinChange} style={{ flex: 1, padding: "11px 0", border: "none", borderRadius: 10, background: "#2563eb", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Potvrdi</button>
               </div>
             </div>
           )}
@@ -382,7 +382,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
 
         <button onClick={handleSave} style={{
           width: "100%", padding: "14px 0",
-          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
+          background: `var(--ui-gradient-btn, var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%)))`,
           border: "none", color: "#fff", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer",
           boxShadow: "0 4px 12px #DF505030"
         }}>Spremi postavke</button>
@@ -471,7 +471,7 @@ function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose, isVe
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, padding: "12px 0", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Odustani</button>
           {text && text !== note && (
-            <button onClick={() => { onSave(text.trim()); onClose(); }} style={{ flex: 2, padding: "12px 0", background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E, #DF5050))", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Spremi napomenu</button>
+            <button onClick={() => { onSave(text.trim()); onClose(); }} style={{ flex: 2, padding: "12px 0", background: "var(--ui-gradient, linear-gradient(135deg, #2563eb, #3b82f6))", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Spremi napomenu</button>
           )}
           {note && (
             <button onClick={() => { onSave(""); onClose(); }} style={{ padding: "12px 14px", background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Obriši</button>
@@ -737,7 +737,7 @@ function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave, is
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
@@ -769,7 +769,7 @@ function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave, is
 
         <button onClick={handleSave} style={{
           width: "100%", padding: "14px 0",
-          background: saved ? "#059669" : "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
+          background: saved ? "#059669" : "var(--ui-gradient-btn, var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%)))",
           border: "none", color: "#fff", borderRadius: 14,
           fontSize: 16, fontWeight: 800, cursor: "pointer",
           transition: "background 0.3s"
@@ -880,7 +880,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
@@ -944,7 +944,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
                     onKeyDown={e => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setEditItem(null); }}
                     style={{ flex: 1, border: "1.5px solid #C73E3E", borderRadius: 8, padding: "6px 10px", fontSize: 14, outline: "none" }}
                   />
-                  <button onClick={confirmRename} style={{ background: "#C73E3E", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}></button>
+                  <button onClick={confirmRename} style={{ background: "#2563eb", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}></button>
                   <button onClick={() => setEditItem(null)} style={{ background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 13, cursor: "pointer" }}></button>
                 </div>
               ) : (
@@ -1327,7 +1327,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 24px", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 24px", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
@@ -1388,7 +1388,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
                 <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{e.name}</span>
                 {e.admin && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-color, #C73E3E)", background: "#fef2f2", borderRadius: 4, padding: "2px 6px" }}>ADMIN</span>}
               </div>
-              <span style={{ fontSize: 16, fontWeight: 800, color: pinsOverride[e.name] ? "#C73E3E" : "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: pinsOverride[e.name] ? "#2563eb" : "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>
                 {pinsOverride[e.name] || e.pin}
                 {pinsOverride[e.name] && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-color, #C73E3E)", marginLeft: 6, letterSpacing: 0 }}></span>}
               </span>
@@ -1408,7 +1408,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
     border: "none", cursor: "pointer", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
     boxShadow: `0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`,
-    background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
+    background: `var(--ui-gradient-btn, var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%)))`,
   };
 
   return (
@@ -1615,7 +1615,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Header */}
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
@@ -1641,13 +1641,13 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
             flex: 1, padding: "8px 0", border: "none", borderRadius: "8px 8px 0 0",
             fontSize: 13, fontWeight: 700, cursor: "pointer",
             background: view === "calendar" ? "#fff" : "rgba(255,255,255,0.2)",
-            color: view === "calendar" ? "#C73E3E" : "#fff"
+            color: view === "calendar" ? "#2563eb" : "#fff"
           }}> Po danu</button>
           <button onClick={() => { setView("workers"); setSelectedDay(null); }} style={{
             flex: 1, padding: "8px 0", border: "none", borderRadius: "8px 8px 0 0",
             fontSize: 13, fontWeight: 700, cursor: "pointer",
             background: view === "workers" ? "#fff" : "rgba(255,255,255,0.2)",
-            color: view === "workers" ? "#C73E3E" : "#fff"
+            color: view === "workers" ? "#2563eb" : "#fff"
           }}> Po radniku</button>
         </div>
       </div>
@@ -1676,14 +1676,14 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
                 return (
                   <button key={day} onClick={() => setSelectedDay(isSelected ? null : day)} style={{
                     padding: "8px 2px", border: "none", borderRadius: 8, cursor: "pointer",
-                    background: isSelected ? "#C73E3E" : isToday ? "#fef2f2" : "transparent",
+                    background: isSelected ? "#2563eb" : isToday ? "#fef2f2" : "transparent",
                     color: isSelected ? "#fff" : isWeekend ? "#94a3b8" : "#1e293b",
                     fontSize: 13, fontWeight: isToday ? 800 : 500,
                     display: "flex", flexDirection: "column", alignItems: "center", gap: 2
                   }}>
                     <span>{day}</span>
                     {workerCount > 0 && (
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: isSelected ? "#fff" : "#C73E3E", opacity: 0.8 }} />
+                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: isSelected ? "#fff" : "#2563eb", opacity: 0.8 }} />
                     )}
                   </button>
                 );
@@ -1727,7 +1727,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
                           fontSize: 13, fontWeight: 800, padding: "3px 10px", borderRadius: 6,
                           border: "1.5px solid #e2e8f0",
                           background: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#fef2f2" : "#fff",
-                          color: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#C73E3E" : "#94a3b8",
+                          color: hours !== null && hours !== 0 && hours !== STANDARD_DAILY_HOURS ? "#2563eb" : "#94a3b8",
                           cursor: "pointer", minWidth: 42
                         }}>{hours !== null ? `${hours}h` : "—"}</button>
                       </div>
@@ -1762,7 +1762,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
                   borderBottom: i < filteredWorkers.length - 1 ? "1px solid #f1f5f9" : "none", textAlign: "left"
                 }}>
                   <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{w}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: total > 0 ? "#C73E3E" : "#cbd5e1" }}>{total}h</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: total > 0 ? "#2563eb" : "#cbd5e1" }}>{total}h</span>
                 </button>
               );
             })}
@@ -1784,7 +1784,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
               onKeyDown={e => e.key === "Enter" && confirmEdit()}
               style={{ width: "100%", boxSizing: "border-box", textAlign: "center", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "16px", fontSize: 28, fontWeight: 800, outline: "none", marginBottom: 16 }}
             />
-            <button onClick={confirmEdit} style={{ width: "100%", background: "#C73E3E", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Spremi sate</button>
+            <button onClick={confirmEdit} style={{ width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: 10, padding: "13px 0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Spremi sate</button>
           </div>
         </div>
       )}
@@ -1851,7 +1851,7 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
@@ -1985,7 +1985,7 @@ function LoginScreen({ onLogin }) {
         {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px", textAlign: "center" }}>{error}</p>}
         <button onClick={handleLogin} style={{
           width: "100%", padding: "15px 0",
-          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
+          background: `var(--ui-gradient-btn, var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%)))`,
           border: "none", color: "#fff",
           borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginTop: 8,
           boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
@@ -2158,7 +2158,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
           </div>
         </div>
         <div style={{padding:16}}>
-          <button onClick={()=>setShowAddServis(true)} style={{width:"100%",marginBottom:14,padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#EF6B6B 0%,#DF5050 55%,#C73E3E 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>+ Novi servisni unos</button>
+          <button onClick={()=>setShowAddServis(true)} style={{width:"100%",marginBottom:14,padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>+ Novi servisni unos</button>
           {entries.length===0?(
             <div style={{textAlign:"center",padding:48,color:"#94a3b8"}}><div style={{fontSize:36,marginBottom:10}}></div><div>Nema servisnih unosa.</div></div>
           ):(
@@ -2194,7 +2194,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                     style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none"}}/>
                 </div>
               ))}
-              <button onClick={addServisEntry} style={{width:"100%",padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#EF6B6B 0%,#DF5050 55%,#C73E3E 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",marginTop:8}}>Spremi unos</button>
+              <button onClick={addServisEntry} style={{width:"100%",padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",marginTop:8}}>Spremi unos</button>
             </div>
           </div>
         )}
@@ -2232,7 +2232,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                 const totalEntries=items.reduce((a,name)=>a+(servisData[`${cat.key}:${name}`]||[]).length,0);
                 return (
                   <button key={cat.key} onClick={()=>setSelectedCat(cat)} style={{
-                    background:"var(--ui-gradient-btn,linear-gradient(180deg,#EF6B6B 0%,#DF5050 55%,#C73E3E 100%))",
+                    background:"var(--ui-gradient-btn,linear-gradient(180deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%))",
                     border:"none",borderRadius:28,padding:"28px 16px",
                     width:"calc(50% - 6px)",cursor:"pointer",textAlign:"center",
                     boxShadow:"0 8px 24px #DF505030,inset 0 1px 0 rgba(255,255,255,0.35)",
@@ -2270,7 +2270,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                         <div style={{fontSize:12,color:"#94a3b8",marginTop:2}}>{last?`Zadnji: ${formatDate(last.datum)} · ${last.opis}`:"Nema servisnih unosa"}</div>
                       </div>
                       <div style={{textAlign:"right",flexShrink:0,marginLeft:10}}>
-                        {count>0&&<div style={{fontSize:12,fontWeight:700,color:"#C73E3E"}}>{count}x servis</div>}
+                        {count>0&&<div style={{fontSize:12,fontWeight:700,color:"#2563eb"}}>{count}x servis</div>}
                         {total>0&&<div style={{fontSize:11,color:"#94a3b8"}}>€{total.toLocaleString("hr-HR")}</div>}
                         <div style={{fontSize:18,color:"#cbd5e1"}}>›</div>
                       </div>
@@ -2291,7 +2291,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             <div style={{fontSize:13,fontWeight:800}}>
               Zadaci
               {(overdueTasks.length+upcomingTasks.filter(t=>t.status==="pending").length)>0&&(
-                <span style={{background:"#fff",color:"#C73E3E",borderRadius:10,padding:"1px 6px",fontSize:11,fontWeight:800,marginLeft:6}}>
+                <span style={{background:"#fff",color:"#2563eb",borderRadius:10,padding:"1px 6px",fontSize:11,fontWeight:800,marginLeft:6}}>
                   {overdueTasks.length+upcomingTasks.filter(t=>t.status==="pending").length}
                 </span>
               )}
@@ -2354,7 +2354,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             <input type="text" placeholder="npr. Zamjena ulja, tehnicki pregled..." value={newTask.opis} onChange={e=>setNewTask(f=>({...f,opis:e.target.value}))}
               onKeyDown={e=>e.key==="Enter"&&addTask()}
               style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none",marginBottom:16}}/>
-            <button onClick={addTask} style={{width:"100%",padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#EF6B6B 0%,#DF5050 55%,#C73E3E 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>Dodaj zadatak</button>
+            <button onClick={addTask} style={{width:"100%",padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>Dodaj zadatak</button>
           </div>
         </div>
       )}
@@ -2394,7 +2394,7 @@ function PublicScheduleView({ onBack }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={30} />
@@ -2407,7 +2407,7 @@ function PublicScheduleView({ onBack }) {
               flex: 1, padding: "10px 0", border: "none", borderRadius: "10px 10px 0 0",
               fontSize: 13, fontWeight: 700, cursor: "pointer",
               background: selectedDate === d ? "#fff" : "rgba(255,255,255,0.2)",
-              color: selectedDate === d ? "#C73E3E" : "#fff"
+              color: selectedDate === d ? "#2563eb" : "#fff"
             }}>{i === 0 ? "Danas" : "Sutra"}</button>
           ))}
         </div>
@@ -2511,7 +2511,7 @@ function PublicHoursView({ onBack }) {
     const isWeekend = (day) => { const d = new Date(y, m - 1, day).getDay(); return d === 0 || d === 6; };
     return (
       <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-        <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px", color: "#fff" }}>
+        <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px", color: "#fff" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={() => setSelectedWorker(null)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
             <div>
@@ -2552,7 +2552,7 @@ function PublicHoursView({ onBack }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={30} />
@@ -2578,7 +2578,7 @@ function PublicHoursView({ onBack }) {
                   borderBottom: i < sorted.length - 1 ? "1px solid #f1f5f9" : "none", textAlign: "left"
                 }}>
                   <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{w}</span>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: total > 0 ? "#C73E3E" : "#cbd5e1" }}>{total}h</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: total > 0 ? "#2563eb" : "#cbd5e1" }}>{total}h</span>
                 </button>
               );
             })}
@@ -2598,7 +2598,7 @@ function PublicApp() {
     const r = document.documentElement;
     r.style.setProperty("--ui-color", DEFAULT_UI_COLOR);
     r.style.setProperty("--ui-gradient", `linear-gradient(135deg, ${DEFAULT_UI_COLOR}CC 0%, ${DEFAULT_UI_COLOR} 100%)`);
-    r.style.setProperty("--ui-gradient-btn", `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`);
+    r.style.setProperty("--ui-gradient-btn", `linear-gradient(180deg, ${ui}DD 0%, ${ui} 55%, ${ui}BB 100%)`);
   }, []);
 
   if (screen === "raspored") return <PublicScheduleView onBack={() => setScreen("landing")} />;
@@ -2608,7 +2608,7 @@ function PublicApp() {
     border: "none", cursor: "pointer", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center", borderRadius: 28, padding: "28px 12px",
     boxShadow: `0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`,
-    background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+    background: `var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%))`,
     flex: 1,
   };
 
@@ -3074,7 +3074,7 @@ export default function App() {
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", fontSize: appFont }}>
       {/* Header */}
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
             <MiniLogo size={34} />
