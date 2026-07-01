@@ -1,10 +1,10 @@
 {
-  "name": "Građprom — Raspored",
-  "short_name": "Građprom",
+  "name": "GRAĐPROM sustav",
+  "short_name": "GRAĐPROM",
   "description": "Dnevni raspored gradilišta i radni sati",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#DF5050",
+  "background_color": "#ffffff",
   "theme_color": "#DF5050",
   "orientation": "portrait",
   "icons": [
