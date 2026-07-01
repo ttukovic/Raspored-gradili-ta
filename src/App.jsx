@@ -66,7 +66,6 @@ const BAZA_KEY = `raspored-baza-v2`;
 const ITEM_DETAILS_KEY = `raspored-item-details`; // detalji o vozilima/strojevima/svim stavkama
 const RADIONICA_KEY = `gradprom-radionica`;
 const RADIONICA_TASKS_KEY = `gradprom-radionica-tasks`;
-const RADIONICA_CATS_KEY = `gradprom-radionica-cats`; // extra kategorije samo za radionicu
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
@@ -2000,72 +1999,28 @@ function LoginScreen({ onLogin }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── RadionicaScreen ───────────────────────────────────────────────────────────
 function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) {
-  const [view, setView] = useState("pregled");
   const [selectedCat, setSelectedCat] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [servisData, setServisData] = useState({});
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddServis, setShowAddServis] = useState(false);
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [showAddCat, setShowAddCat] = useState(false);
   const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
-  const [newTask, setNewTask] = useState({ datum: "", opis: "", itemKey: "" });
-  const [newCat, setNewCat] = useState({ label: "", icon: "🔩" });
-  const [extraCats, setExtraCats] = useState([]); // extra kategorije samo za radionicu
-  const [extraData, setExtraData] = useState({}); // { catKey: ["naziv1", ...] }
-  const [newItemName, setNewItemName] = useState("");
 
-  // Spoji raspored kategorije (bez radnika) + radionica-only kategorije
-  const radionicaCats = [
-    ...cats.filter(c => c.key !== "workers"),
-    ...extraCats,
-  ];
-
-  // Svi podaci uključujući extra
-  const allRadionicaData = { ...allData, ...extraData };
+  // Kategorije bez radnika
+  const radionicaCats = cats.filter(c => c.key !== "workers");
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       storage.get(RADIONICA_KEY).catch(() => null),
       storage.get(RADIONICA_TASKS_KEY).catch(() => null),
-      storage.get(RADIONICA_CATS_KEY).catch(() => null),
-    ]).then(([sRes, tRes, cRes]) => {
+    ]).then(([sRes, tRes]) => {
       if (sRes?.value) setServisData(JSON.parse(sRes.value));
       if (tRes?.value) setTasks(JSON.parse(tRes.value));
-      if (cRes?.value) {
-        const saved = JSON.parse(cRes.value);
-        setExtraCats(saved.cats || []);
-        setExtraData(saved.data || {});
-      }
       setLoading(false);
     });
   }, []);
-
-  const saveExtraCats = async (newCats, newData) => {
-    setExtraCats(newCats);
-    setExtraData(newData);
-    try { await storage.set(RADIONICA_CATS_KEY, JSON.stringify({ cats: newCats, data: newData })); } catch (_) {}
-  };
-
-  const addCategory = async () => {
-    const label = newCat.label.trim();
-    if (!label) return;
-    const key = `rad_${label.toLowerCase().replace(/[čć]/g,"c").replace(/š/g,"s").replace(/ž/g,"z").replace(/đ/g,"dj").replace(/[^a-z0-9]+/g,"_")}_${Date.now().toString(36)}`;
-    const cat = { key, label, icon: newCat.icon || "🔩", color: "#64748b", bg: "#f8fafc", border: "#64748b" };
-    await saveExtraCats([...extraCats, cat], { ...extraData, [key]: [] });
-    setNewCat({ label: "", icon: "🔩" });
-    setShowAddCat(false);
-  };
-
-  const addItemToExtraCat = async (catKey) => {
-    const name = newItemName.trim();
-    if (!name || (extraData[catKey] || []).includes(name)) return;
-    const updated = { ...extraData, [catKey]: [...(extraData[catKey] || []), name] };
-    await saveExtraCats(extraCats, updated);
-    setNewItemName("");
-  };
 
   const saveServis = async (newData) => {
     setServisData(newData);
@@ -2100,24 +2055,6 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
     await saveServis(updated);
   };
 
-  const addTask = async () => {
-    if (!newTask.opis.trim() || !newTask.datum || !newTask.itemKey) return;
-    const item = allItems.find(i => i.key === newTask.itemKey);
-    const task = {
-      id: Date.now().toString(),
-      itemKey: newTask.itemKey,
-      itemName: item?.name || newTask.itemKey,
-      catIcon: item?.catIcon || "🔧",
-      datum: newTask.datum,
-      opis: newTask.opis.trim(),
-      status: "pending", // "pending" | "done" | "skipped"
-      created: user.name,
-    };
-    await saveTasks([...tasks, task]);
-    setNewTask({ datum: "", opis: "", itemKey: "" });
-    setShowAddTask(false);
-  };
-
   const setTaskStatus = async (id, status) => {
     await saveTasks(tasks.map(t => t.id === id ? { ...t, status } : t));
   };
@@ -2126,7 +2063,6 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
     await saveTasks(tasks.filter(t => t.id !== id));
   };
 
-  // Zadaci za idućih 14 dana, sortirani po datumu
   const today = new Date().toISOString().slice(0,10);
   const in14days = new Date(Date.now() + 14 * 86400000).toISOString().slice(0,10);
   const upcomingTasks = tasks
@@ -2138,11 +2074,10 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
   const formatDate = (d) => new Date(d + "T12:00:00").toLocaleDateString("hr-HR", { day: "numeric", month: "numeric" });
   const daysUntil = (d) => Math.round((new Date(d + "T12:00:00") - new Date()) / 86400000);
 
-  // Zadnji servis po vozilu
   const getLastServis = (key) => (servisData[key] || [])[0] || null;
   const getTotalCost = (key) => (servisData[key] || []).reduce((a, e) => a + (e.trosak || 0), 0);
 
-  // ── Prikaz detalja servisne knjige za odabrano vozilo ──
+  // ── Servisna knjiga odabranog vozila ──
   if (selectedItem) {
     const entries = servisData[selectedItem.key] || [];
     return (
@@ -2159,7 +2094,6 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             </div>
             {settingsBtn}
           </div>
-          {/* Statistike */}
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <div style={{ flex: 1, background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "8px 12px" }}>
               <div style={{ fontSize: 10, opacity: 0.8, textTransform: "uppercase" }}>Servisnih unosa</div>
@@ -2175,14 +2109,12 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             </div>
           </div>
         </div>
-
         <div style={{ padding: 16 }}>
           <button onClick={() => setShowAddServis(true)} style={{
             width: "100%", marginBottom: 14, padding: "13px 0",
             background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
             border: "none", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer"
           }}>+ Novi servisni unos</button>
-
           {entries.length === 0 ? (
             <div style={{ textAlign: "center", padding: 48, color: "#94a3b8" }}>
               <div style={{ fontSize: 36, marginBottom: 10 }}>🔧</div>
@@ -2213,8 +2145,6 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             </div>
           )}
         </div>
-
-        {/* Add servis modal */}
         {showAddServis && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 2000 }} onClick={() => setShowAddServis(false)}>
             <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box", maxHeight: "85vh", overflowY: "auto" }}>
@@ -2243,9 +2173,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
 
   // ── Glavni pregled Radionice ──
   return (
-    <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {/* Lijevi dio — glavni sadržaj */}
-      <div style={{ flex: 1, background: "#f8fafc", overflowY: "auto", minWidth: 0 }}>
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
       <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -2256,367 +2184,82 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
               <div style={{ fontSize: 18, fontWeight: 800 }}>🔧 Radionica</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {isAdmin && view === "pregled" && !selectedCat && (
-              <button onClick={() => setShowAddCat(true)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Kat.</button>
-            )}
-            {settingsBtn}
-          </div>
+          {settingsBtn}
         </div>
       </div>
 
       <div style={{ padding: 16 }}>
         {loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
+        ) : !selectedCat ? (
+          /* Oblačići kategorija */
+          <div style={{ padding: "8px 0" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
+              {radionicaCats.map(cat => {
+                const items = allData[cat.key] || [];
+                const totalEntries = items.reduce((a, name) => a + (servisData[`${cat.key}:${name}`] || []).length, 0);
+                return (
+                  <button key={cat.key} onClick={() => setSelectedCat(cat)} style={{
+                    background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
+                    border: "none", borderRadius: 28, padding: "28px 16px",
+                    width: "calc(50% - 6px)", cursor: "pointer", textAlign: "center",
+                    boxShadow: "0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 10
+                  }}>
+                    <span style={{ fontSize: 36 }}>{cat.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{cat.label}</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 2 }}>
+                        {items.length} stavki{totalEntries > 0 ? ` · ${totalEntries} servisnih unosa` : ""}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         ) : (
-          /* Landing s oblačićima kategorija, pa lista kad odabereš */
+          /* Lista vozila/strojeva unutar odabrane kategorije */
           <>
-            {!selectedCat ? (
-              /* Oblačići kategorija */
-              <div style={{ padding: "8px 0" }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
-                  {radionicaCats.map(cat => {
-                    const items = allRadionicaData[cat.key] || [];
-                    const totalEntries = items.reduce((a, name) => a + (servisData[`${cat.key}:${name}`] || []).length, 0);
-                    return (
-                      <button key={cat.key} onClick={() => setSelectedCat(cat)} style={{
-                        background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
-                        border: "none", borderRadius: 28, padding: "28px 16px",
-                        width: "calc(50% - 6px)", cursor: "pointer", textAlign: "center",
-                        boxShadow: "0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)",
-                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10
-                      }}>
-                        <span style={{ fontSize: 36 }}>{cat.icon}</span>
-                        <div>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{cat.label}</div>
-                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 2 }}>
-                            {items.length} stavki{totalEntries > 0 ? ` · ${totalEntries} servisnih unosa` : ""}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              /* Lista stavki unutar odabrane kategorije */
-              <>
-                <button onClick={() => setSelectedCat(null)} style={{
-                  background: "#f1f5f9", border: "none", borderRadius: 10,
-                  padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#64748b",
-                  cursor: "pointer", marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6
-                }}>← {selectedCat.label}</button>
-
-                {/* Dodaj stavku za extra kategorije */}
-                {extraCats.find(c => c.key === selectedCat.key) && (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <input value={newItemName} onChange={e => setNewItemName(e.target.value)}
-                      onKeyDown={e => e.key === "Enter" && addItemToExtraCat(selectedCat.key)}
-                      placeholder={`Dodaj stavku (${selectedCat.label.toLowerCase()})...`}
-                      style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none" }} />
-                    <button onClick={() => addItemToExtraCat(selectedCat.key)} style={{ background: "#C73E3E", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>+</button>
-                  </div>
-                )}
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[...(allRadionicaData[selectedCat.key] || [])].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name => {
-                    const key = `${selectedCat.key}:${name}`;
-                    const last = getLastServis(key);
-                    const total = getTotalCost(key);
-                    const count = (servisData[key] || []).length;
-                    return (
-                      <button key={name} onClick={() => setSelectedItem({ key, name, catKey: selectedCat.key, catLabel: selectedCat.label, catIcon: selectedCat.icon })} style={{
-                        background: "#fff", border: "1.5px solid #f1f5f9", borderRadius: 12,
-                        padding: "12px 14px", cursor: "pointer", textAlign: "left",
-                        display: "flex", justifyContent: "space-between", alignItems: "center",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
-                      }}>
-                        <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{name}</div>
-                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                            {last ? `Zadnji: ${formatDate(last.datum)} · ${last.opis}` : "Nema servisnih unosa"}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
-                          {count > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: "#C73E3E" }}>{count}× servis</div>}
-                          {total > 0 && <div style={{ fontSize: 11, color: "#94a3b8" }}>€{total.toLocaleString("hr-HR")}</div>}
-                          <div style={{ fontSize: 18, color: "#cbd5e1" }}>›</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
+            <button onClick={() => setSelectedCat(null)} style={{
+              background: "#f1f5f9", border: "none", borderRadius: 10,
+              padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#64748b",
+              cursor: "pointer", marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6
+            }}>← {selectedCat.label}</button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {[...(allData[selectedCat.key] || [])].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name => {
+                const key = `${selectedCat.key}:${name}`;
+                const last = getLastServis(key);
+                const total = getTotalCost(key);
+                const count = (servisData[key] || []).length;
+                return (
+                  <button key={name} onClick={() => setSelectedItem({ key, name, catKey: selectedCat.key, catLabel: selectedCat.label, catIcon: selectedCat.icon })} style={{
+                    background: "#fff", border: "1.5px solid #f1f5f9", borderRadius: 12,
+                    padding: "12px 14px", cursor: "pointer", textAlign: "left",
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{name}</div>
+                      <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                        {last ? `Zadnji: ${formatDate(last.datum)} · ${last.opis}` : "Nema servisnih unosa"}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
+                      {count > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: "#C73E3E" }}>{count}× servis</div>}
+                      {total > 0 && <div style={{ fontSize: 11, color: "#94a3b8" }}>€{total.toLocaleString("hr-HR")}</div>}
+                      <div style={{ fontSize: 18, color: "#cbd5e1" }}>›</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </>
         )}
       </div>
 
-      {/* Add category modal */}
-      {showAddCat && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 2000 }} onClick={() => setShowAddCat(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box", maxHeight: "80vh", overflowY: "auto" }}>
-            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
-            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 800 }}>Nova kategorija (samo Radionica)</h3>
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Naziv</label>
-            <input autoFocus value={newCat.label} onChange={e => setNewCat(f => ({ ...f, label: e.target.value }))}
-              onKeyDown={e => e.key === "Enter" && addCategory()}
-              placeholder="npr. Alati, Gume, Rezervni dijelovi..."
-              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 14 }} />
-            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 8, textTransform: "uppercase" }}>Odaberi ikonu</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-              {["🔧","🔨","🪛","🔩","⚙️","🪜","🛠️","⛏️","🪚","🔑","🪝","🧰","🪤","🪣","🧲","💡","🔋","⚡","🔌","🪫","🛢️","⛽","🚿","🪠","🔭","📐","📏","🗜️","🪟","🚪","🏗️","🏚️","🧱","🪵","🔦","🕯️","🪔","🏎️","🚗","🚐","🚑","🚒","🚜","🚛","🚚","🏍️","🛻","🚧","⛱️","⛲","🌡️","🧪","🧫","🧴","🪣","🪤","🗃️","📦","🗂️","📋","📊","📈","🗓️","📝"].map(e => (
-                <button key={e} onClick={() => setNewCat(f => ({ ...f, icon: e }))} style={{
-                  fontSize: 22, background: newCat.icon === e ? "#fef2f2" : "#f8fafc",
-                  border: newCat.icon === e ? "2px solid #C73E3E" : "1.5px solid #e2e8f0",
-                  borderRadius: 8, width: 40, height: 40, cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}>{e}</button>
-              ))}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <div style={{ fontSize: 28 }}>{newCat.icon}</div>
-              <span style={{ fontSize: 13, color: "#94a3b8" }}>Odabrana ikona</span>
-            </div>
-            <button onClick={addCategory} style={{ width: "100%", padding: "13px 0", background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))", border: "none", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Dodaj kategoriju</button>
-          </div>
-        </div>
-      )}
-      </div>{/* kraj lijevog dijela */}
-
-      {/* Fiksni panel zadataka — desna strana */}
-      <TaskPanel cats={[...cats.filter(c => c.key !== "workers"), ...extraCats]} allData={allRadionicaData} user={user} isAdmin={isAdmin} />
-    </div>
-  );
-}
-
-// ── TaskPanel — fiksna desna traka s zadacima u rasporedu ────────────────────
-function TaskPanel({ cats, allData, user, isAdmin }) {
-  const [tasks, setTasks] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newTask, setNewTask] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
-
-  useEffect(() => {
-    storage.get(RADIONICA_TASKS_KEY).then(res => {
-      if (res?.value) setTasks(JSON.parse(res.value));
-    }).catch(() => {});
-    // Poll svakih 30s
-    const iv = setInterval(() => {
-      storage.get(RADIONICA_TASKS_KEY).then(res => {
-        if (res?.value) setTasks(JSON.parse(res.value));
-      }).catch(() => {});
-    }, 30000);
-    return () => clearInterval(iv);
-  }, []);
-
-  const saveTasks = async (t) => {
-    setTasks(t);
-    try { await storage.set(RADIONICA_TASKS_KEY, JSON.stringify(t)); } catch (_) {}
-  };
-
-  const setStatus = (id, status) => saveTasks(tasks.map(t => t.id === id ? { ...t, status } : t));
-  const deleteTask = (id) => saveTasks(tasks.filter(t => t.id !== id));
-
-  const addTask = async () => {
-    if (!newTask.opis.trim() || !newTask.datum) return;
-    const item = newTask.itemKey ? (() => {
-      for (const cat of cats) {
-        const items = allData[cat.key] || [];
-        const found = items.find(n => `${cat.key}:${n}` === newTask.itemKey);
-        if (found) return { name: found, icon: cat.icon };
-      }
-      return null;
-    })() : null;
-    const task = {
-      id: Date.now().toString(),
-      itemKey: newTask.itemKey || null,
-      itemName: item?.name || "",
-      catIcon: item?.icon || "📋",
-      datum: newTask.datum,
-      opis: newTask.opis.trim(),
-      status: "pending",
-      created: user.name,
-    };
-    await saveTasks([...tasks, task]);
-    setNewTask({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
-    setShowAdd(false);
-  };
-
-  const today = new Date().toISOString().slice(0,10);
-  const in14 = new Date(Date.now() + 14*86400000).toISOString().slice(0,10);
-  const overdue = tasks.filter(t => t.datum < today && t.status === "pending").sort((a,b) => a.datum.localeCompare(b.datum));
-  const upcoming = tasks.filter(t => t.datum >= today && t.datum <= in14).sort((a,b) => a.datum.localeCompare(b.datum));
-  const pendingCount = overdue.length + upcoming.filter(t => t.status === "pending").length;
-
-  const formatD = (d) => new Date(d + "T12:00:00").toLocaleDateString("hr-HR", { day: "numeric", month: "numeric" });
-  const daysUntil = (d) => Math.round((new Date(d + "T12:00:00") - new Date()) / 86400000);
-
-  return (
-    <div style={{
-      width: 220, flexShrink: 0, background: "#fff",
-      borderLeft: "1.5px solid #f1f5f9", display: "flex", flexDirection: "column",
-      height: "100%", overflowY: "auto"
-    }}>
-      {/* Header */}
-      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "12px 12px 10px", color: "#fff" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 13, fontWeight: 800 }}>
-            📋 Zadaci
-            {pendingCount > 0 && (
-              <span style={{ background: "#fff", color: "#C73E3E", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800, marginLeft: 6 }}>{pendingCount}</span>
-            )}
-          </div>
-          <button onClick={() => setShowAdd(s => !s)} style={{
-            background: "rgba(255,255,255,0.25)", border: "none", color: "#fff",
-            borderRadius: 6, width: 24, height: 24, fontSize: 16, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>+</button>
-        </div>
-      </div>
-
-      {/* Add form */}
-      {showAdd && (
-        <div style={{ padding: "10px 10px 0", borderBottom: "1px solid #f1f5f9" }}>
-          <select value={newTask.itemKey} onChange={e => setNewTask(f => ({ ...f, itemKey: e.target.value }))}
-            style={{ width: "100%", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none", marginBottom: 6, background: "#fff" }}>
-            <option value="">— Vozilo (opcionalno) —</option>
-            {cats.filter(c => c.key !== "workers").map(cat => (
-              <optgroup key={cat.key} label={`${cat.icon} ${cat.label}`}>
-                {(allData[cat.key] || []).map(name => (
-                  <option key={name} value={`${cat.key}:${name}`}>{name}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <input type="date" value={newTask.datum} onChange={e => setNewTask(f => ({ ...f, datum: e.target.value }))}
-            style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none", marginBottom: 6 }} />
-          <input value={newTask.opis} onChange={e => setNewTask(f => ({ ...f, opis: e.target.value }))}
-            onKeyDown={e => e.key === "Enter" && addTask()}
-            placeholder="Opis zadatka..."
-            style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 8, padding: "6px 8px", fontSize: 12, outline: "none", marginBottom: 8 }} />
-          <button onClick={addTask} style={{ width: "100%", padding: "7px 0", background: "#C73E3E", border: "none", color: "#fff", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", marginBottom: 8 }}>Dodaj</button>
-        </div>
-      )}
-
-      {/* Zakasnili */}
-      {overdue.length > 0 && (
-        <div style={{ padding: "8px 10px 4px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>⚠️ Kasni</div>
-          {overdue.map(t => (
-            <MiniTaskCard key={t.id} task={t} onDone={() => setStatus(t.id, "done")} onSkip={() => setStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatD={formatD} daysUntil={daysUntil} overdue />
-          ))}
-        </div>
-      )}
-
-      {/* Iduća 2 tjedna */}
-      <div style={{ padding: "8px 10px 4px", flex: 1 }}>
-        {upcoming.length === 0 && overdue.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "20px 0", color: "#cbd5e1", fontSize: 12 }}>Nema zadataka</div>
-        ) : (
-          <>
-            {upcoming.length > 0 && <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Iduća 2 tjedna</div>}
-            {upcoming.map(t => (
-              <MiniTaskCard key={t.id} task={t} onDone={() => setStatus(t.id, "done")} onSkip={() => setStatus(t.id, "skipped")} onDelete={isAdmin ? () => deleteTask(t.id) : null} formatD={formatD} daysUntil={daysUntil} />
-            ))}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── MiniTaskCard — kompaktna kartica zadatka za TaskPanel ─────────────────────
-function MiniTaskCard({ task, onDone, onSkip, onDelete, formatD, daysUntil, overdue }) {
-  const done = task.status === "done";
-  const skipped = task.status === "skipped";
-  const days = daysUntil(task.datum);
-
-  return (
-    <div style={{
-      background: done ? "#f0fdf4" : skipped ? "#f8fafc" : task.priority ? "#fffbeb" : overdue ? "#fef2f2" : "#f8fafc",
-      border: `1px solid ${done ? "#bbf7d0" : skipped ? "#e2e8f0" : task.priority ? "#fde047" : overdue ? "#fecaca" : "#e2e8f0"}`,
-      borderRadius: 8, padding: "8px 8px", marginBottom: 6,
-      opacity: done || skipped ? 0.65 : 1
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {task.itemName && (
-            <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 2 }}>{task.catIcon} {task.itemName}</div>
-          )}
-          <div style={{ fontSize: 12, fontWeight: 600, color: done || skipped ? "#94a3b8" : "#1e293b", textDecoration: done || skipped ? "line-through" : "none", wordBreak: "break-word" }}>{task.opis}</div>
-          <div style={{ display: "flex", gap: 4, marginTop: 3, flexWrap: "wrap" }}>
-            <span style={{
-              fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 5px",
-              background: done ? "#dcfce7" : skipped ? "#f1f5f9" : overdue ? "#fee2e2" : days === 0 ? "#fef9c3" : "#eff6ff",
-              color: done ? "#16a34a" : skipped ? "#94a3b8" : overdue ? "#ef4444" : days === 0 ? "#854d0e" : "#3b82f6"
-            }}>
-              {done ? "✓" : skipped ? "✗" : overdue ? `${Math.abs(days)}d kasni` : days === 0 ? "Danas" : days === 1 ? "Sutra" : `${days}d`}
-            </span>
-            {task.priority && !done && !skipped && (
-              <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 5px", background: "#fef9c3", color: "#854d0e" }}>⚡</span>
-            )}
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, flexShrink: 0 }}>
-          {!done && !skipped && (
-            <>
-              <button onClick={onDone} style={{ background: "#dcfce7", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer" }}>✓</button>
-              <button onClick={onSkip} style={{ background: "#fef2f2", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 12, cursor: "pointer" }}>✗</button>
-            </>
-          )}
-          {(done || skipped) && (
-            <button onClick={onDone} style={{ background: "#f1f5f9", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 10, cursor: "pointer", color: "#94a3b8" }}>↩</button>
-          )}
-          {onDelete && <button onClick={onDelete} style={{ background: "#fef2f2", border: "none", borderRadius: 5, width: 22, height: 22, fontSize: 10, cursor: "pointer", color: "#ef4444" }}>🗑</button>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── TaskCard — kartica planiranog zadatka s kvačicom/X ────────────────────────
-function TaskCard({ task, onDone, onSkip, onDelete, formatDate, daysUntil, overdue }) {
-  const done = task.status === "done";
-  const skipped = task.status === "skipped";
-  const days = daysUntil(task.datum);
-
-  return (
-    <div style={{
-      background: done ? "#f0fdf4" : skipped ? "#f8fafc" : task.priority ? "#fffbeb" : overdue ? "#fef2f2" : "#fff",
-      border: `1.5px solid ${done ? "#bbf7d0" : skipped ? "#e2e8f0" : task.priority ? "#fde047" : overdue ? "#fecaca" : "#f1f5f9"}`,
-      borderRadius: 12, padding: "12px 14px", marginBottom: 8,
-      opacity: done || skipped ? 0.7 : 1
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 13 }}>{task.catIcon}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{task.itemName}</span>
-            <span style={{
-              fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "1px 7px",
-              background: done ? "#dcfce7" : skipped ? "#f1f5f9" : overdue ? "#fee2e2" : days <= 3 ? "#fef9c3" : "#eff6ff",
-              color: done ? "#16a34a" : skipped ? "#94a3b8" : overdue ? "#ef4444" : days <= 3 ? "#ca8a04" : "#3b82f6"
-            }}>
-              {done ? "✓ Završeno" : skipped ? "✗ Preskočeno" : overdue ? `${Math.abs(days)} dana kasni` : days === 0 ? "Danas" : days === 1 ? "Sutra" : `za ${days} dana`}
-            </span>
-            {task.priority && !done && !skipped && (
-              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "1px 7px", background: "#fef9c3", color: "#854d0e" }}>⚡ Prioritet</span>
-            )}
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: done || skipped ? "#94a3b8" : "#1e293b", textDecoration: done || skipped ? "line-through" : "none" }}>{task.opis}</div>
-          <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{formatDate(task.datum)} · {task.created}</div>
-        </div>
-        <div style={{ display: "flex", gap: 6, marginLeft: 10, flexShrink: 0 }}>
-          {!done && !skipped && <>
-            <button onClick={onDone} style={{ background: "#dcfce7", border: "none", borderRadius: 8, width: 34, height: 34, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</button>
-            <button onClick={onSkip} style={{ background: "#fef2f2", border: "none", borderRadius: 8, width: 34, height: 34, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✗</button>
-          </>}
-          {(done || skipped) && (
-            <button onClick={onDone} style={{ background: "#f1f5f9", border: "none", borderRadius: 8, width: 34, height: 34, fontSize: 13, cursor: "pointer", color: "#94a3b8" }} title="Vrati na čekanje">↩</button>
-          )}
-          {onDelete && <button onClick={onDelete} style={{ background: "#fef2f2", border: "none", borderRadius: 8, width: 34, height: 34, fontSize: 14, cursor: "pointer", color: "#ef4444" }}>🗑</button>}
-        </div>
-      </div>
+      {/* Zadaci — desni panel */}
+      <TaskPanel cats={cats} allData={allData} user={user} isAdmin={isAdmin} />
     </div>
   );
 }
