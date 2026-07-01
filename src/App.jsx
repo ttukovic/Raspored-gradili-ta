@@ -2602,6 +2602,9 @@ export default function App() {
   const isPast = currentDate < today();
   const readOnly = isPast && !user?.admin; // budući dani su uvijek editabilni, prošli samo za admine
 
+  const catsRef = useRef(cats);
+  useEffect(() => { catsRef.current = cats; }, [cats]);
+
   // ── Load day (initial — shows loading state) ──
   const loadDay = useCallback(async (dateStr) => {
     setLoading(true);
@@ -2611,12 +2614,12 @@ export default function App() {
         const data = JSON.parse(res.value);
         let migratedSites = (data.sites || makeEmptySites()).map(s => {
           const ns = { ...s };
-          cats.forEach(c => { if (!ns[c.key]) ns[c.key] = []; }); // osiguraj sve trenutne kategorije
+          catsRef.current.forEach(c => { if (!ns[c.key]) ns[c.key] = []; });
           return ns;
         });
         PERMANENT_SITES.forEach(name => {
           if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
-            const emptyCatFields = Object.fromEntries(cats.map(c => [c.key, []]));
+            const emptyCatFields = Object.fromEntries(catsRef.current.map(c => [c.key, []]));
             migratedSites.push({ id: `permanent-${name}`, name, ...emptyCatFields, permanent: true });
           }
         });
@@ -2631,11 +2634,10 @@ export default function App() {
       }
     } catch (_) { setSites(makeEmptySites()); }
     setLoading(false);
-  }, [cats]);
+  }, []); // bez cats u depovima — koristimo catsRef
 
-  // ── Silent refresh (background poll — no loading flicker, skips if user just edited) ──
+  // ── Silent refresh (background poll — no loading flicker) ──
   const silentRefresh = useCallback(async (dateStr) => {
-    // Ako je korisnik nešto promijenio u zadnjih 5 sekundi, preskoči ovaj poll ciklus
     if (Date.now() - lastLocalEditRef.current < 5000) return;
     try {
       const res = await storage.get(dateKey(dateStr), true);
@@ -2643,12 +2645,12 @@ export default function App() {
         const data = JSON.parse(res.value);
         let migratedSites = (data.sites || makeEmptySites()).map(s => {
           const ns = { ...s };
-          cats.forEach(c => { if (!ns[c.key]) ns[c.key] = []; }); // osiguraj sve trenutne kategorije
+          catsRef.current.forEach(c => { if (!ns[c.key]) ns[c.key] = []; });
           return ns;
         });
         PERMANENT_SITES.forEach(name => {
           if (!migratedSites.find(s => s.id === `permanent-${name}`)) {
-            const emptyCatFields = Object.fromEntries(cats.map(c => [c.key, []]));
+            const emptyCatFields = Object.fromEntries(catsRef.current.map(c => [c.key, []]));
             migratedSites.push({ id: `permanent-${name}`, name, ...emptyCatFields, permanent: true });
           }
         });
@@ -2659,7 +2661,7 @@ export default function App() {
         setLastEditor(data.lastEditor || null);
       }
     } catch (_) {}
-  }, [cats]);
+  }, []); // bez cats u depovima — koristimo catsRef
 
   // ── Load kategorije i baza on mount ──
   useEffect(() => {
@@ -2673,9 +2675,14 @@ export default function App() {
     storage.get(BAZA_KEY).then(res => {
       if (res?.value) {
         const b = JSON.parse(res.value);
-        setAllData(prev => ({ ...prev, ...b })); // dinamički merge svih kategorija, ne samo fiksnih 4
+        setAllData(prev => ({ ...prev, ...b }));
       }
     }).catch(() => {});
+  }, [user]); // cats se učitaju jednom, ne ovise o currentDate
+
+  // ── Load day kad se promijeni datum ili user ──
+  useEffect(() => {
+    if (!user) return;
     loadDay(currentDate);
   }, [user, currentDate, loadDay]);
 
