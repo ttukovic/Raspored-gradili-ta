@@ -2008,7 +2008,6 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
   const [showAddTask, setShowAddTask] = useState(false);
   const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
   const [newTask, setNewTask] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
-  const [view, setView] = useState("pregled"); // "pregled" | "zadaci"
 
   const radionicaCats = cats.filter(c => c.key !== "workers");
 
@@ -2099,29 +2098,33 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
     return {text:`za ${days} dana`, bg:"#eff6ff", color:"#3b82f6"};
   };
 
-  const TaskRow = ({ t }) => {
-    const lbl = taskStatusLabel(t);
+  const MiniTaskRow = ({ t, onDone, onSkip, onReset, onDelete }) => {
     const done = t.status==="done", skipped = t.status==="skipped";
+    const days = daysUntil(t.datum);
+    const overdue = t.datum < today && !done && !skipped;
     return (
       <div style={{
-        background: done?"#f0fdf4":skipped?"#f8fafc":t.priority?"#fffbeb":t.datum<today?"#fef2f2":"#fff",
-        border:`1.5px solid ${done?"#bbf7d0":skipped?"#e2e8f0":t.priority?"#fde047":t.datum<today?"#fecaca":"#f1f5f9"}`,
-        borderRadius:12, padding:"12px 14px", marginBottom:8, opacity:done||skipped?0.7:1
+        background: done?"#f0fdf4":skipped?"#f8fafc":t.priority?"#fffbeb":overdue?"#fef2f2":"#f8fafc",
+        border:`1px solid ${done?"#bbf7d0":skipped?"#e2e8f0":t.priority?"#fde047":overdue?"#fecaca":"#e2e8f0"}`,
+        borderRadius:8, padding:"7px 8px", marginBottom:5, opacity:done||skipped?0.65:1
       }}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}>
-              {t.itemName && <span style={{fontSize:12,color:"#94a3b8"}}>{t.catIcon} {t.itemName}</span>}
-              <span style={{fontSize:11,fontWeight:700,borderRadius:6,padding:"1px 7px",background:lbl.bg,color:lbl.color}}>{lbl.text}</span>
-              {t.priority && !done && !skipped && <span style={{fontSize:11,fontWeight:700,borderRadius:6,padding:"1px 7px",background:"#fef9c3",color:"#854d0e"}}>Prioritet</span>}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:4}}>
+          <div style={{flex:1,minWidth:0}}>
+            {t.itemName&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:1}}>{t.itemName}</div>}
+            <div style={{fontSize:12,fontWeight:600,color:done||skipped?"#94a3b8":"#1e293b",textDecoration:done||skipped?"line-through":"none",wordBreak:"break-word"}}>{t.opis}</div>
+            <div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>
+              <span style={{
+                fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",
+                background:done?"#dcfce7":skipped?"#f1f5f9":overdue?"#fee2e2":days===0?"#fef9c3":"#eff6ff",
+                color:done?"#16a34a":skipped?"#94a3b8":overdue?"#ef4444":days===0?"#854d0e":"#3b82f6"
+              }}>{done?"✓":skipped?"✗":overdue?`${Math.abs(days)}d`:days===0?"Danas":days===1?"Sutra":`${days}d`}</span>
+              {t.priority&&!done&&!skipped&&<span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",background:"#fef9c3",color:"#854d0e"}}>Prioritet</span>}
             </div>
-            <div style={{fontSize:14,fontWeight:700,color:done||skipped?"#94a3b8":"#1e293b",textDecoration:done||skipped?"line-through":"none"}}>{t.opis}</div>
-            <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{formatDate(t.datum)} · {t.created}</div>
           </div>
-          <div style={{display:"flex",gap:6,marginLeft:10,flexShrink:0}}>
-            {!done&&!skipped&&<><button onClick={()=>setTaskStatus(t.id,"done")} style={{background:"#dcfce7",border:"none",borderRadius:8,width:34,height:34,fontSize:16,cursor:"pointer"}}>✓</button><button onClick={()=>setTaskStatus(t.id,"skipped")} style={{background:"#fef2f2",border:"none",borderRadius:8,width:34,height:34,fontSize:16,cursor:"pointer"}}>✗</button></>}
-            {(done||skipped)&&<button onClick={()=>setTaskStatus(t.id,"pending")} style={{background:"#f1f5f9",border:"none",borderRadius:8,width:34,height:34,fontSize:13,cursor:"pointer",color:"#94a3b8"}}>↩</button>}
-            {isAdmin&&<button onClick={()=>deleteTask(t.id)} style={{background:"#fef2f2",border:"none",borderRadius:8,width:34,height:34,fontSize:14,cursor:"pointer",color:"#ef4444"}}>🗑</button>}
+          <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+            {!done&&!skipped&&<><button onClick={onDone} style={{background:"#dcfce7",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}>✓</button><button onClick={onSkip} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}>✗</button></>}
+            {(done||skipped)&&<button onClick={onReset} style={{background:"#f1f5f9",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#94a3b8"}}>↩</button>}
+            {onDelete&&<button onClick={onDelete} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#ef4444"}}>🗑</button>}
           </div>
         </div>
       </div>
@@ -2201,36 +2204,28 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
 
   // Glavni pregled
   return (
-    <div style={{background:"#f8fafc",minHeight:"100vh",fontFamily:"'Inter',system-ui,sans-serif"}}>
-      <div style={{background:"var(--ui-gradient,linear-gradient(135deg,#C73E3E 0%,#DF5050 100%))",padding:"20px 16px 0",color:"#fff"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-          <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <button onClick={onBack} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:14,cursor:"pointer",fontWeight:600}}>← Natrag</button>
-            <MiniLogo size={30}/>
-            <div>
-              <div style={{fontSize:11,opacity:0.8,textTransform:"uppercase",letterSpacing:1}}>{user.name}</div>
-              <div style={{fontSize:18,fontWeight:800}}>Radionica</div>
-            </div>
-          </div>
-          {settingsBtn}
-        </div>
-        <div style={{display:"flex",gap:4}}>
-          {[["pregled","Vozila i strojevi"],["zadaci","Zadaci (14 dana)"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setView(v)} style={{
-              flex:1,padding:"8px 0",border:"none",borderRadius:"10px 10px 0 0",
-              fontSize:12,fontWeight:700,cursor:"pointer",
-              background:view===v?"#fff":"rgba(255,255,255,0.2)",
-              color:view===v?"#C73E3E":"#fff"
-            }}>{l}</button>
-          ))}
-        </div>
-      </div>
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",fontFamily:"'Inter',system-ui,sans-serif"}}>
 
-      <div style={{padding:16}}>
-        {loading?(
-          <div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Učitavanje...</div>
-        ):view==="pregled"?(
-          !selectedCat?(
+      {/* Lijevi dio — vozila i strojevi */}
+      <div style={{flex:1,background:"#f8fafc",overflowY:"auto",minWidth:0}}>
+        <div style={{background:"var(--ui-gradient,linear-gradient(135deg,#C73E3E 0%,#DF5050 100%))",padding:"20px 16px",color:"#fff"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <button onClick={onBack} style={{background:"rgba(255,255,255,0.2)",border:"none",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:14,cursor:"pointer",fontWeight:600}}>← Natrag</button>
+              <MiniLogo size={30}/>
+              <div>
+                <div style={{fontSize:11,opacity:0.8,textTransform:"uppercase",letterSpacing:1}}>{user.name}</div>
+                <div style={{fontSize:18,fontWeight:800}}>Radionica</div>
+              </div>
+            </div>
+            {settingsBtn}
+          </div>
+        </div>
+
+        <div style={{padding:16}}>
+          {loading?(
+            <div style={{textAlign:"center",padding:60,color:"#94a3b8"}}>Učitavanje...</div>
+          ):!selectedCat?(
             <div style={{display:"flex",flexWrap:"wrap",gap:12,justifyContent:"center",padding:"8px 0"}}>
               {radionicaCats.map(cat=>{
                 const items=allData[cat.key]||[];
@@ -2284,35 +2279,57 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                 })}
               </div>
             </>
-          )
-        ):(
-          // Zadaci
-          <>
-            <button onClick={()=>setShowAddTask(true)} style={{width:"100%",marginBottom:14,padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#EF6B6B 0%,#DF5050 55%,#C73E3E 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer"}}>+ Novi zadatak</button>
-            {overdueTasks.length>0&&(
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#ef4444",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Zakasnili zadaci</div>
-                {overdueTasks.map(t=><TaskRow key={t.id} t={t}/>)}
-              </div>
-            )}
-            {upcomingTasks.length===0&&overdueTasks.length===0?(
-              <div style={{textAlign:"center",padding:48,color:"#94a3b8"}}><div style={{fontSize:36,marginBottom:10}}>✅</div><div>Nema planiranih zadataka.</div></div>
-            ):(
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Iduca 2 tjedna</div>
-                {upcomingTasks.map(t=><TaskRow key={t.id} t={t}/>)}
-              </div>
-            )}
-            {recentDone.length>0&&(
-              <div style={{marginTop:20}}>
-                <div style={{fontSize:12,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Nedavno zavrseni</div>
-                {recentDone.map(t=><TaskRow key={t.id} t={t}/>)}
-              </div>
-            )}
-          </>
+          )}
+        </div>
+      </div>
+
+      {/* Desni panel — zadaci, uvijek vidljiv */}
+      <div style={{width:200,flexShrink:0,background:"#fff",borderLeft:"1.5px solid #f1f5f9",display:"flex",flexDirection:"column",height:"100%",overflowY:"auto"}}>
+        {/* Header */}
+        <div style={{background:"var(--ui-gradient,linear-gradient(135deg,#C73E3E 0%,#DF5050 100%))",padding:"12px 10px",color:"#fff",flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{fontSize:13,fontWeight:800}}>
+              Zadaci
+              {(overdueTasks.length+upcomingTasks.filter(t=>t.status==="pending").length)>0&&(
+                <span style={{background:"#fff",color:"#C73E3E",borderRadius:10,padding:"1px 6px",fontSize:11,fontWeight:800,marginLeft:6}}>
+                  {overdueTasks.length+upcomingTasks.filter(t=>t.status==="pending").length}
+                </span>
+              )}
+            </div>
+            <button onClick={()=>setShowAddTask(true)} style={{background:"rgba(255,255,255,0.25)",border:"none",color:"#fff",borderRadius:6,width:24,height:24,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+          </div>
+        </div>
+
+        {/* Zakasnili */}
+        {overdueTasks.length>0&&(
+          <div style={{padding:"8px 8px 0"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#ef4444",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Kasni</div>
+            {overdueTasks.map(t=><MiniTaskRow key={t.id} t={t} today={today} daysUntil={daysUntil} formatDate={formatDate} onDone={()=>setTaskStatus(t.id,"done")} onSkip={()=>setTaskStatus(t.id,"skipped")} onReset={()=>setTaskStatus(t.id,"pending")} onDelete={isAdmin?()=>deleteTask(t.id):null}/>)}
+          </div>
+        )}
+
+        {/* Iduci zadaci */}
+        <div style={{padding:"8px 8px 0",flex:1}}>
+          {upcomingTasks.length===0&&overdueTasks.length===0?(
+            <div style={{textAlign:"center",padding:"20px 0",color:"#cbd5e1",fontSize:12}}>Nema zadataka</div>
+          ):(
+            <>
+              {upcomingTasks.length>0&&<div style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Iduca 2 tjedna</div>}
+              {upcomingTasks.map(t=><MiniTaskRow key={t.id} t={t} today={today} daysUntil={daysUntil} formatDate={formatDate} onDone={()=>setTaskStatus(t.id,"done")} onSkip={()=>setTaskStatus(t.id,"skipped")} onReset={()=>setTaskStatus(t.id,"pending")} onDelete={isAdmin?()=>deleteTask(t.id):null}/>)}
+            </>
+          )}
+        </div>
+
+        {/* Nedavno zavrseni */}
+        {recentDone.length>0&&(
+          <div style={{padding:"8px 8px 8px",borderTop:"1px solid #f1f5f9"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>Zavrseni</div>
+            {recentDone.map(t=><MiniTaskRow key={t.id} t={t} today={today} daysUntil={daysUntil} formatDate={formatDate} onDone={()=>setTaskStatus(t.id,"done")} onSkip={()=>setTaskStatus(t.id,"skipped")} onReset={()=>setTaskStatus(t.id,"pending")} onDelete={isAdmin?()=>deleteTask(t.id):null}/>)}
+          </div>
         )}
       </div>
 
+      {/* Modal za novi zadatak */}
       {showAddTask&&(
         <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",zIndex:2000}} onClick={()=>setShowAddTask(false)}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",padding:"24px 16px 32px",boxSizing:"border-box"}}>
