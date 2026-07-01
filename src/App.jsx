@@ -647,13 +647,14 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
 }
 
 // ── ItemDetailScreen ───────────────────────────────────────────────────────────
-function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave }) {
+function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave, isWorker }) {
   const [form, setForm] = useState({
     model:        details?.model        || "",
     godina:       details?.godina       || "",
     registracija: details?.registracija || "",
     cijena:       details?.cijena       || "",
     datumKupnje:  details?.datumKupnje  || "",
+    datumRodenja: details?.datumRodenja || "",
     napomena:     details?.napomena     || "",
   });
   const [saved, setSaved] = useState(false);
@@ -702,12 +703,21 @@ function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave }) 
 
       <div style={{ padding: 16 }}>
         <div style={{ background: "#fff", borderRadius: 14, padding: 20, boxShadow: "0 1px 6px rgba(0,0,0,0.07)", marginBottom: 16 }}>
-          {field("Model / Marka", "model", "npr. Volvo FH16, Kubota M7131...")}
-          {field("Godina proizvodnje", "godina", "npr. 2019", "number")}
-          {field("Registracija / Serijski broj", "registracija", "npr. ZG 1234 AB")}
-          {field("Cijena kupnje (€)", "cijena", "npr. 85000", "number")}
-          {field("Datum kupnje", "datumKupnje", "", "date")}
-          {field("Napomena / Opis", "napomena", "Dodatne informacije...")}
+          {isWorker ? (
+            <>
+              {field("Datum rođenja", "datumRodenja", "", "date")}
+              {field("Napomena", "napomena", "Dodatne informacije o radniku...")}
+            </>
+          ) : (
+            <>
+              {field("Model / Marka", "model", "npr. Volvo FH16, Kubota M7131...")}
+              {field("Godina proizvodnje", "godina", "npr. 2019", "number")}
+              {field("Registracija / Serijski broj", "registracija", "npr. ZG 1234 AB")}
+              {field("Cijena kupnje (€)", "cijena", "npr. 85000", "number")}
+              {field("Datum kupnje", "datumKupnje", "", "date")}
+              {field("Napomena / Opis", "napomena", "Dodatne informacije...")}
+            </>
+          )}
         </div>
 
         <button onClick={handleSave} style={{
@@ -760,6 +770,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
         item={selectedItem.name}
         catLabel={cat_?.label || selectedItem.catKey}
         catIcon={cat_?.icon || "📋"}
+        isWorker={selectedItem.catKey === "workers"}
         onBack={() => setSelectedItem(null)}
         details={getItemDetails(selectedItem.catKey, selectedItem.name)}
         onSave={(form) => saveItemDetails(selectedItem.catKey, selectedItem.name, form)}
