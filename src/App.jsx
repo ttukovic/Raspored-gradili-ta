@@ -1367,12 +1367,19 @@ function AnalysisScreen({ onBack, settingsBtn }) {
 // ── LandingScreen ─────────────────────────────────────────────────────────────
 function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cats, userColors, onSaveColors }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const cardBase = {
+    border: "none", cursor: "pointer", display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center",
+    boxShadow: `0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`,
+    background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
+  };
+
   return (
     <div style={{
       minHeight: "100vh", background: "#ffffff",
-      display: "flex", alignItems: "center", justifyContent: "center", padding: 24
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20
     }}>
-      {/* Settings button top right — visible only when logged in */}
       {user && (
         <button onClick={() => setSettingsOpen(true)} style={{
           position: "fixed", top: 16, right: 16,
@@ -1385,63 +1392,55 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
       {settingsOpen && user && (
         <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />
       )}
-      <div style={{ width: "100%", maxWidth: 420 }}>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
-          {LOGO_URL ? (
-            <img src={LOGO_URL} alt="Gradprom" style={{
-              height: 80, marginBottom: 12, objectFit: "contain",
-              filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))"
-            }} />
-          ) : (
-            <div style={{
-              width: 64, height: 64, borderRadius: 16, background: BRAND_RED,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 28, margin: "0 auto 12px", color: "#fff"
-            }}>🏗️</div>
-          )}
-          <div style={{ fontSize: 22, fontWeight: 800, marginTop: 8, color: "#1e293b" }}>
-            {user ? `Bok, ${user.name}!` : "Dobrodošli"}
-          </div>
-          <div style={{ fontSize: 14, opacity: 0.7, marginTop: 4, color: "#64748b" }}>Što želite otvoriti?</div>
-        </div>
 
-        <button onClick={() => onSelect("raspored")} style={{
-          width: "100%",
-          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
-          border: "none", borderRadius: 24,
-          padding: "24px 22px", marginBottom: 16, cursor: "pointer", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16,
-          boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
-        }}>
-          <span style={{ fontSize: 36 }}>📅</span>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Raspored gradilišta</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Dnevni raspored radnika, kamiona i strojeva</div>
-          </div>
-        </button>
-
-        <button onClick={() => onSelect("sati")} style={{
-          width: "100%",
-          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
-          border: "none", borderRadius: 24,
-          padding: "24px 22px", marginBottom: 16, cursor: "pointer", textAlign: "left",
-          display: "flex", alignItems: "center", gap: 16,
-          boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
-        }}>
-          <span style={{ fontSize: 36 }}>⏱️</span>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Radni sati</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>Mjesečno praćenje sati po radniku</div>
-          </div>
-        </button>
-
-        {user && (
-          <button onClick={onLogout} style={{
-            width: "100%", background: "#f1f5f9", border: "none", borderRadius: 12,
-            padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
-          }}>&#8592; Odjava</button>
+      {/* Logo + pozdrav */}
+      <div style={{ textAlign: "center", marginBottom: 36 }}>
+        {LOGO_URL ? (
+          <img src={LOGO_URL} alt="Gradprom" style={{ height: 80, objectFit: "contain", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))" }} />
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: BRAND_RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}>🏗️</div>
         )}
+        <div style={{ fontSize: 20, fontWeight: 800, marginTop: 12, color: "#1e293b" }}>
+          {user ? `Bok, ${user.name}!` : "Dobrodošli"}
+        </div>
+        <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>Što želite otvoriti?</div>
       </div>
+
+      {/* Tri kartice u redu — sve iste veličine */}
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 500 }}>
+
+        {/* Radni sati */}
+        <button onClick={() => onSelect("sati")} style={{
+          ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
+        }}>
+          <span style={{ fontSize: 32, marginBottom: 10 }}>⏱️</span>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
+        </button>
+
+        {/* Raspored */}
+        <button onClick={() => onSelect("raspored")} style={{
+          ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
+        }}>
+          <span style={{ fontSize: 32, marginBottom: 10 }}>📅</span>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
+        </button>
+
+        {/* Radionica */}
+        <button onClick={() => onSelect("radionica")} style={{
+          ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
+        }}>
+          <span style={{ fontSize: 32, marginBottom: 10 }}>🔧</span>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
+        </button>
+
+      </div>
+
+      {user && (
+        <button onClick={onLogout} style={{
+          marginTop: 32, background: "#f1f5f9", border: "none", borderRadius: 12,
+          padding: "10px 28px", cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
+        }}>&#8592; Odjava</button>
+      )}
     </div>
   );
 }
@@ -2364,6 +2363,27 @@ export default function App() {
   if (screen === "sati") return (
     <div style={{ fontSize: appFont }}>
       <HoursScreen user={user} allWorkers={allData.workers || []} sites={sites || []} onBack={() => setScreen("landing")} settingsBtn={settingsBtn} />
+    </div>
+  );
+
+  if (screen === "radionica") return (
+    <div style={{ fontSize: appFont, background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => setScreen("landing")} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>&#8592; Natrag</button>
+          <MiniLogo size={34} />
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{user.name}</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>🔧 Radionica</div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>{settingsBtn}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 40, color: "#94a3b8", textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔧</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#64748b", marginBottom: 8 }}>Radionica</div>
+        <div style={{ fontSize: 14, color: "#94a3b8" }}>Ova sekcija je u pripremi.</div>
+      </div>
     </div>
   );
 
