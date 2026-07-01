@@ -67,6 +67,7 @@ const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
 const SETTINGS_KEY = "gradprom-settings";
+const PINS_KEY = "gradprom-pins"; // custom PINovi koji prepisuju defaultne u Supabaseu
 
 // ── Prijevodi (HR/EN) ──────────────────────────────────────────────────────────
 const LANG = {
@@ -188,18 +189,33 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
     onClose();
   };
 
-  const handlePinChange = () => {
-    const eng = ENGINEERS.find(e => e.name === user.name);
-    if (!eng) return;
-    if (pinOld !== eng.pin) { setPinError("Pogrešan stari PIN."); setPinOld(""); return; }
+  const [pinsOverride, setPinsOverride] = useState({});
+
+  // Učitaj prilagođene PINove iz Supabase
+  useEffect(() => {
+    storage.get(PINS_KEY).then(res => {
+      if (res?.value) setPinsOverride(JSON.parse(res.value));
+    }).catch(() => {});
+  }, []);
+
+  const getEffectivePin = (name) => pinsOverride[name] || ENGINEERS.find(e => e.name === name)?.pin;
+
+  const handlePinChange = async () => {
+    const currentPin = getEffectivePin(user.name);
+    if (pinOld !== currentPin) { setPinError("Pogrešan stari PIN."); setPinOld(""); return; }
     if (pinNew.length < 4) { setPinError("Novi PIN mora imati barem 4 znamenke."); return; }
     if (pinNew !== pinConfirm) { setPinError("PINovi se ne podudaraju."); setPinConfirm(""); return; }
-    // Update in-memory (ne možemo mijenjati const, ali možemo obavijestiti admina)
-    setPinSuccess(true);
-    setPinError("");
-    setPinStep(0);
-    // Napomena: stvarna promjena PINa zahtijeva promjenu koda od admina
-    // Ovo je privremeni prikaz — admin treba promijeniti PIN u kodu
+    try {
+      const newOverrides = { ...pinsOverride, [user.name]: pinNew };
+      await storage.set(PINS_KEY, JSON.stringify(newOverrides), true); // shared = true da admin vidi
+      setPinsOverride(newOverrides);
+      setPinSuccess(true);
+      setPinError("");
+      setPinStep(0);
+      setPinOld(""); setPinNew(""); setPinConfirm("");
+    } catch (_) {
+      setPinError("Greška pri spremanju. Pokušaj ponovo.");
+    }
   };
 
   return (
@@ -251,7 +267,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
           <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔑 Promjena PIN-a</div>
           {pinSuccess && (
             <div style={{ background: "#ecfdf5", borderRadius: 10, padding: "10px 14px", color: "#059669", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-              ✅ Zahtjev za promjenu PINa zabilježen — kontaktiraj admina za potvrdu.
+              ✅ PIN uspješno promijenjen! Novi PIN je aktivan odmah.
             </div>
           )}
           {pinStep === 0 && !pinSuccess && (
@@ -926,12 +942,16 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
 function AnalysisScreen({ onBack, settingsBtn }) {
   const [log, setLog] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pinsOverride, setPinsOverride] = useState({});
 
   useEffect(() => {
     storage.get(ACTIVITY_LOG_KEY).then(res => {
       setLog(res?.value ? JSON.parse(res.value) : {});
       setLoading(false);
     }).catch(() => { setLog({}); setLoading(false); });
+    storage.get(PINS_KEY).then(res => {
+      if (res?.value) setPinsOverride(JSON.parse(res.value));
+    }).catch(() => {});
   }, []);
 
   const sortedUsers = log
@@ -1009,7 +1029,10 @@ function AnalysisScreen({ onBack, settingsBtn }) {
                 <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{e.name}</span>
                 {e.admin && <span style={{ fontSize: 10, fontWeight: 700, color: "#C73E3E", background: "#fef2f2", borderRadius: 4, padding: "2px 6px" }}>ADMIN</span>}
               </div>
-              <span style={{ fontSize: 16, fontWeight: 800, color: "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>{e.pin}</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: pinsOverride[e.name] ? "#C73E3E" : "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>
+                {pinsOverride[e.name] || e.pin}
+                {pinsOverride[e.name] && <span style={{ fontSize: 10, fontWeight: 700, color: "#C73E3E", marginLeft: 6, letterSpacing: 0 }}>✏️</span>}
+              </span>
             </div>
           ))}
         </div>
@@ -1511,10 +1534,20 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
 function LoginScreen({ onLogin }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [pinsOverride, setPinsOverride] = useState({});
+
+  useEffect(() => {
+    storage.get(PINS_KEY).then(res => {
+      if (res?.value) setPinsOverride(JSON.parse(res.value));
+    }).catch(() => {});
+  }, []);
 
   const handleLogin = () => {
     if (pin.length < 4) { setError("Upiši PIN."); return; }
-    const eng = ENGINEERS.find(e => e.pin === pin);
+    const eng = ENGINEERS.find(e => {
+      const effectivePin = pinsOverride[e.name] || e.pin;
+      return effectivePin === pin;
+    });
     if (!eng) { setError("Pogrešan PIN."); setPin(""); return; }
     onLogin(eng);
   };
