@@ -159,7 +159,7 @@ const ENGINEERS = [
   { name: "Gordana", pin: "1008" },
   { name: "Ena", pin: "1009" },
   { name: "Anita", pin: "1010" },
-  { name: "Darko", pin: "1011", radionica: true },
+  { name: "Kranjec Darko", pin: "1011", radionica: true },
   { name: "Kralj Matija", pin: "1012", radionica: true },
 ];
 
@@ -1406,11 +1406,14 @@ function AnalysisScreen({ onBack, settingsBtn }) {
 function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cats, userColors, onSaveColors }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Tip korisnika
+  const isRadionica = user?.radionica && !user?.admin;
+
   const cardBase = {
     border: "none", cursor: "pointer", display: "flex", flexDirection: "column",
     alignItems: "center", justifyContent: "center",
-    boxShadow: `0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`,
-    background: `var(--ui-gradient-btn, var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%)))`,
+    boxShadow: `0 8px 24px rgba(37,99,235,0.2), inset 0 1px 0 rgba(255,255,255,0.35)`,
+    background: `var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%))`,
   };
 
   return (
@@ -1418,16 +1421,14 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
       minHeight: "100vh", background: "#ffffff",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20
     }}>
-      {user && (
-        <button onClick={() => setSettingsOpen(true)} style={{
-          position: "fixed", top: 16, right: 16,
-          background: "#f1f5f9", border: "none", borderRadius: 10,
-          width: 36, height: 36, fontSize: 18, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.1)"
-        }}>⚙️</button>
-      )}
-      {settingsOpen && user && (
+      <button onClick={() => setSettingsOpen(true)} style={{
+        position: "fixed", top: 16, right: 16,
+        background: "#f1f5f9", border: "none", borderRadius: 10,
+        width: 36, height: 36, fontSize: 18, cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.1)"
+      }}>⚙️</button>
+      {settingsOpen && (
         <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />
       )}
 
@@ -1436,49 +1437,55 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
         {LOGO_URL ? (
           <img src={LOGO_URL} alt="Gradprom" style={{ height: 80, objectFit: "contain", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))" }} />
         ) : (
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: BRAND_RED, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}></div>
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}></div>
         )}
         <div style={{ fontSize: 20, fontWeight: 800, marginTop: 12, color: "#1e293b" }}>
-          {user ? `Bok, ${user.name}!` : "Dobrodošli"}
+          Bok, {user.name}!
         </div>
         <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>Što želite otvoriti?</div>
       </div>
 
-      {/* Tri kartice u redu — sve iste veličine */}
-      <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 500 }}>
-
-        {/* Radni sati */}
-        <button onClick={() => onSelect("sati")} style={{
-          ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
-        }}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
-        </button>
-
-        {/* Raspored */}
-        <button onClick={() => onSelect("raspored")} style={{
-          ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
-        }}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
-        </button>
-
-        {/* Radionica */}
-        <button onClick={() => onSelect("radionica")} style={{
-          ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1,
-        }}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
-        </button>
-
-      </div>
-
-      {user && (
-        <button onClick={onLogout} style={{
-          marginTop: 32, background: "#f1f5f9", border: "none", borderRadius: 12,
-          padding: "10px 28px", cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
-        }}>&#8592; Odjava</button>
+      {/* Kartice — ovisno o korisniku */}
+      {isRadionica ? (
+        /* Radionica korisnici — samo Sati i Radionica */
+        <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 340 }}>
+          <button onClick={() => onSelect("sati")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
+          </button>
+          <button onClick={() => onSelect("raspored_view")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1, opacity: 0.85 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>samo pregled</div>
+          </button>
+          <button onClick={() => onSelect("radionica")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
+          </button>
+        </div>
+      ) : (
+        /* Normalni i admin korisnici — sve tri kartice */
+        <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 500 }}>
+          <button onClick={() => onSelect("sati")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
+          </button>
+          <button onClick={() => onSelect("raspored")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
+          </button>
+          <button onClick={() => onSelect("radionica")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
+          </button>
+        </div>
       )}
+
+      {/* Samo pregled link */}
+      <a href="/?view=public" style={{
+        marginTop: 20, fontSize: 12, color: "#94a3b8", textDecoration: "none",
+        padding: "6px 14px", borderRadius: 8, border: "1px solid #e2e8f0",
+        display: "inline-block"
+      }}>Samo pregled (javni prikaz)</a>
+
+      <button onClick={onLogout} style={{
+        marginTop: 12, background: "#f1f5f9", border: "none", borderRadius: 12,
+        padding: "10px 28px", cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
+      }}>&#8592; Odjava</button>
     </div>
   );
 }
@@ -2778,7 +2785,7 @@ export default function App() {
   const [dragItem, setDragItem] = useState(null); // { siteId, cat, value }
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [screen, setScreen] = useState("landing");
-  const [pendingDest, setPendingDest] = useState(null); // "raspored" ili "sati" — pamti odabir prije logina
+
   const [newSiteName, setNewSiteName] = useState("");
   const pollRef = useRef(null);
   const lastLocalEditRef = useRef(0); // timestamp zadnje lokalne promjene
@@ -3110,29 +3117,27 @@ export default function App() {
   const appFont = fontSizeMap[settings.fontSize] || "15px";
 
   // 1) Landing — izbornik prikazan ODMAH; ako korisnik već nije prijavljen, prvo traži login
+  // 1) Login uvijek prvi
+  if (screen === "login" || !user) return (
+    <div style={{ fontSize: appFont }}>
+      <LoginScreen onLogin={(u) => { setUser(u); setScreen("landing"); }} />
+    </div>
+  );
+
+  const settingsBtn = <SettingsButton user={user} settings={settings} onSaveSettings={saveSettings} cats={cats} userColors={userColors} onSaveColors={saveColors} />;
+
+  // 2) Landing — opcije ovisno o korisniku
   if (screen === "landing") return (
     <div style={{ fontSize: appFont }}>
       <LandingScreen
         user={user}
         settings={settings} onSaveSettings={saveSettings}
         cats={cats} userColors={userColors} onSaveColors={saveColors}
-        onLogout={() => { setUser(null); setScreen("landing"); }}
-        onSelect={(dest) => {
-          if (user) { setScreen(dest); }
-          else { setPendingDest(dest); setScreen("login"); }
-        }}
+        onLogout={() => { setUser(null); setScreen("login"); }}
+        onSelect={(dest) => setScreen(dest)}
       />
     </div>
   );
-
-  // 2) Login — traži se tek nakon što korisnik odabere što želi otvoriti
-  if (screen === "login" || !user) return (
-    <div style={{ fontSize: appFont }}>
-      <LoginScreen onLogin={(u) => { setUser(u); setScreen(pendingDest || "raspored"); }} />
-    </div>
-  );
-
-  const settingsBtn = <SettingsButton user={user} settings={settings} onSaveSettings={saveSettings} cats={cats} userColors={userColors} onSaveColors={saveColors} />;
 
   if (screen === "sati") return (
     <div style={{ fontSize: appFont }}>
@@ -3143,6 +3148,13 @@ export default function App() {
   if (screen === "radionica") return (
     <div style={{ fontSize: appFont }}>
       <RadionicaScreen user={user} cats={cats} allData={allData} onBack={() => setScreen("landing")} settingsBtn={settingsBtn} isAdmin={user.admin} />
+    </div>
+  );
+
+  // Raspored samo za pregled (radionica korisnici)
+  if (screen === "raspored_view") return (
+    <div style={{ fontSize: appFont }}>
+      <PublicScheduleView onBack={() => setScreen("landing")} />
     </div>
   );
 
