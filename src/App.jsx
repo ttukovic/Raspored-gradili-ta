@@ -67,6 +67,7 @@ const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
 const SETTINGS_KEY = "gradprom-settings";
+const COLORS_KEY = "gradprom-colors"; // lokalno po korisniku (localStorage)
 const PINS_KEY = "gradprom-pins"; // custom PINovi koji prepisuju defaultne u Supabaseu
 
 // ── Prijevodi (HR/EN) ──────────────────────────────────────────────────────────
@@ -183,9 +184,56 @@ function applyFontSize(size) {
   document.documentElement.style.fontSize = map[size] || "15px";
 }
 
+// Defaultne boje (koriste se ako korisnik nije promijenio)
+const DEFAULT_UI_COLOR = "#DF5050";
+const DEFAULT_CAT_COLORS = {
+  workers:  { color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
+  trucks:   { color: "#f97316", bg: "#fff7ed", border: "#f97316" },
+  trailers: { color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
+  machines: { color: "#059669", bg: "#ecfdf5", border: "#059669" },
+};
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+// Generiraj blagu pozadinsku boju iz primarne
+function colorToBg(hex) {
+  return hex + "18";
+}
+
+function useColors() {
+  const [colors, setColors] = useState({ ui: DEFAULT_UI_COLOR, cats: {} });
+  useEffect(() => {
+    try {
+      const c = localStorage.getItem(COLORS_KEY);
+      if (c) setColors(JSON.parse(c));
+    } catch (_) {}
+  }, []);
+  const save = (newColors) => {
+    setColors(newColors);
+    try { localStorage.setItem(COLORS_KEY, JSON.stringify(newColors)); } catch (_) {}
+  };
+  return [colors, save];
+}
+
+// Vrati efektivnu boju kategorije — korisnikova ili defaultna
+function getCatColor(catKey, userColors) {
+  if (userColors?.cats?.[catKey]) return userColors.cats[catKey];
+  return DEFAULT_CAT_COLORS[catKey] || { color: "#64748b", bg: "#f8fafc", border: "#64748b" };
+}
+
+// Vrati efektivnu UI boju
+function getUIColor(userColors) {
+  return userColors?.ui || DEFAULT_UI_COLOR;
+}
+
 // ── SettingsPanel ──────────────────────────────────────────────────────────────
-function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
+function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColors, onSaveColors }) {
   const [fontSize, setFontSize] = useState(settings.fontSize || "normal");
+  const [localUIColor, setLocalUIColor] = useState(userColors?.ui || DEFAULT_UI_COLOR);
+  const [localCatColors, setLocalCatColors] = useState(userColors?.cats || {});
   const [pinStep, setPinStep] = useState(0);
   const [pinOld, setPinOld] = useState("");
   const [pinNew, setPinNew] = useState("");
@@ -195,6 +243,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
 
   const handleSave = () => {
     onSaveSettings({ fontSize });
+    onSaveColors({ ui: localUIColor, cats: localCatColors });
     onClose();
   };
 
@@ -202,6 +251,10 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
   const handleFontSize = (val) => {
     setFontSize(val);
     applyFontSize(val);
+  };
+
+  const setCatColor = (catKey, hex) => {
+    setLocalCatColors(prev => ({ ...prev, [catKey]: { color: hex, bg: colorToBg(hex), border: hex } }));
   };
 
   const [pinsOverride, setPinsOverride] = useState({});
@@ -260,6 +313,37 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
           </div>
         </div>
 
+        {/* Boje sučelja */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🎨 Boje sučelja</div>
+
+          {/* UI boja (header, gumbi) */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Glavna boja (header, gumbi)</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <input type="color" value={localUIColor} onChange={e => setLocalUIColor(e.target.value)}
+                style={{ width: 48, height: 40, border: "none", borderRadius: 8, cursor: "pointer", padding: 2 }} />
+              <div style={{ flex: 1, height: 36, borderRadius: 8, background: `linear-gradient(135deg, ${localUIColor}CC, ${localUIColor})` }} />
+              <button onClick={() => setLocalUIColor(DEFAULT_UI_COLOR)} style={{ fontSize: 11, color: "#94a3b8", background: "none", border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Reset</button>
+            </div>
+          </div>
+
+          {/* Boje kategorija — dinamički iz cats liste */}
+          <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8 }}>Boje kategorija (samo za tebe)</div>
+          {cats.map(cat => {
+            const currentColor = localCatColors[cat.key]?.color || DEFAULT_CAT_COLORS[cat.key]?.color || "#64748b";
+            const defaultColor = DEFAULT_CAT_COLORS[cat.key]?.color || "#64748b";
+            return (
+              <div key={cat.key} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <input type="color" value={currentColor} onChange={e => setCatColor(cat.key, e.target.value)}
+                  style={{ width: 40, height: 36, border: "none", borderRadius: 6, cursor: "pointer", padding: 2, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: currentColor, fontWeight: 700, flex: 1 }}>{cat.icon} {cat.label}</span>
+                <button onClick={() => setCatColor(cat.key, defaultColor)} style={{ fontSize: 11, color: "#94a3b8", background: "none", border: "1px solid #e2e8f0", borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Reset</button>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Promjena PIN-a */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔑 Promjena PIN-a</div>
@@ -295,7 +379,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
 
         <button onClick={handleSave} style={{
           width: "100%", padding: "14px 0",
-          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
           border: "none", color: "#fff", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer",
           boxShadow: "0 4px 12px #DF505030"
         }}>Spremi postavke</button>
@@ -305,7 +389,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
 }
 
 // ── SettingsButton — mala ikona ⚙️ za gornji desni kut ────────────────────────
-function SettingsButton({ user, settings, onSaveSettings }) {
+function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSaveColors }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -315,7 +399,7 @@ function SettingsButton({ user, settings, onSaveSettings }) {
         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0
       }}>⚙️</button>
-      {open && <SettingsPanel user={user} onClose={() => setOpen(false)} settings={settings} onSaveSettings={onSaveSettings} />}
+      {open && <SettingsPanel user={user} onClose={() => setOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />}
     </>
   );
 }
@@ -410,7 +494,7 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 }
 
 // ── SiteCard ──────────────────────────────────────────────────────────────────
-function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats }) {
+function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats, userColors }) {
   const [modal, setModal] = useState(null); // cat key or null
   const [dragOverCat, setDragOverCat] = useState(null); // koja kategorija je trenutno "meta" za drop
 
@@ -459,7 +543,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {(site[cat.key] || []).map(val => (
-                  <Badge key={val} label={val} color={cat.color}
+                  <Badge key={val} label={val} color={getCatColor(cat.key, userColors).color}
                     warn={cat.key === "workers" && duplicateWorkers.has(val)}
                     onRemove={readOnly ? null : () => removeItem(cat.key, val)}
                     draggable={!readOnly}
@@ -470,8 +554,8 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
                 ))}
                 {!readOnly && (
                   <button onClick={() => setModal(cat.key)} style={{
-                    background: cat.bg, border: `1.5px dashed ${cat.border}`, borderRadius: 6,
-                    color: cat.color, fontSize: 11, fontWeight: 600, padding: "2px 6px",
+                    background: getCatColor(cat.key, userColors).bg, border: `1.5px dashed ${getCatColor(cat.key, userColors).border}`, borderRadius: 6,
+                    color: getCatColor(cat.key, userColors).color, fontSize: 11, fontWeight: 600, padding: "2px 6px",
                     cursor: "pointer", marginTop: 2, textAlign: "left", width: "fit-content"
                   }}>+ {cat.key === "workers" ? "Radnik" : cat.label.replace(/i$/, "")}</button>
                 )}
@@ -549,7 +633,7 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
@@ -846,7 +930,7 @@ function PrintModal({ sites, date, onClose, cats }) {
 }
 
 // ── SidebarPalette ────────────────────────────────────────────────────────────
-function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem, cats }) {
+function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem, cats, userColors }) {
   const [activeCat, setActiveCat] = useState("workers");
   const [search, setSearch] = useState("");
 
@@ -966,7 +1050,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 24px", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 24px", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
@@ -1025,11 +1109,11 @@ function AnalysisScreen({ onBack, settingsBtn }) {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{e.name}</span>
-                {e.admin && <span style={{ fontSize: 10, fontWeight: 700, color: "#C73E3E", background: "#fef2f2", borderRadius: 4, padding: "2px 6px" }}>ADMIN</span>}
+                {e.admin && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-color, #C73E3E)", background: "#fef2f2", borderRadius: 4, padding: "2px 6px" }}>ADMIN</span>}
               </div>
               <span style={{ fontSize: 16, fontWeight: 800, color: pinsOverride[e.name] ? "#C73E3E" : "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>
                 {pinsOverride[e.name] || e.pin}
-                {pinsOverride[e.name] && <span style={{ fontSize: 10, fontWeight: 700, color: "#C73E3E", marginLeft: 6, letterSpacing: 0 }}>✏️</span>}
+                {pinsOverride[e.name] && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ui-color, #C73E3E)", marginLeft: 6, letterSpacing: 0 }}>✏️</span>}
               </span>
             </div>
           ))}
@@ -1040,7 +1124,7 @@ function AnalysisScreen({ onBack, settingsBtn }) {
 }
 
 // ── LandingScreen ─────────────────────────────────────────────────────────────
-function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings }) {
+function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cats, userColors, onSaveColors }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <div style={{
@@ -1058,7 +1142,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings }) {
         }}>⚙️</button>
       )}
       {settingsOpen && user && (
-        <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} />
+        <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />
       )}
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
@@ -1082,7 +1166,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings }) {
 
         <button onClick={() => onSelect("raspored")} style={{
           width: "100%",
-          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
           border: "none", borderRadius: 24,
           padding: "24px 22px", marginBottom: 16, cursor: "pointer", textAlign: "left",
           display: "flex", alignItems: "center", gap: 16,
@@ -1097,7 +1181,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings }) {
 
         <button onClick={() => onSelect("sati")} style={{
           width: "100%",
-          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
           border: "none", borderRadius: 24,
           padding: "24px 22px", marginBottom: 16, cursor: "pointer", textAlign: "left",
           display: "flex", alignItems: "center", gap: 16,
@@ -1231,7 +1315,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
@@ -1442,7 +1526,7 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
 
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
@@ -1574,7 +1658,7 @@ function LoginScreen({ onLogin }) {
         {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px", textAlign: "center" }}>{error}</p>}
         <button onClick={handleLogin} style={{
           width: "100%", padding: "15px 0",
-          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+          background: `var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))`,
           border: "none", color: "#fff",
           borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginTop: 8,
           boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
@@ -1589,6 +1673,31 @@ function LoginScreen({ onLogin }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [settings, saveSettings] = useSettings();
+  const [userColors, saveColors] = useColors();
+
+  // Primijeni boje kao CSS varijable — svi elementi koji ih koriste automatski se ažuriraju
+  useEffect(() => {
+    const ui = userColors?.ui || DEFAULT_UI_COLOR;
+    const uiDark = ui; // koristimo istu boju, samo tamniju varijantu
+    const r = document.documentElement;
+    r.style.setProperty("--ui-color", ui);
+    r.style.setProperty("--ui-gradient", `linear-gradient(135deg, ${ui}CC 0%, ${ui} 100%)`);
+    r.style.setProperty("--ui-gradient-btn", `linear-gradient(180deg, ${ui}DD 0%, ${ui} 55%, ${ui}BB 100%)`);
+    // Boje kategorija
+    const allCatKeys = ["workers","trucks","trailers","machines"];
+    allCatKeys.forEach(key => {
+      const c = userColors?.cats?.[key];
+      if (c) {
+        r.style.setProperty(`--cat-color-${key}`, c.color);
+        r.style.setProperty(`--cat-bg-${key}`, c.bg || c.color + "18");
+        r.style.setProperty(`--cat-border-${key}`, c.border || c.color);
+      } else {
+        r.style.removeProperty(`--cat-color-${key}`);
+        r.style.removeProperty(`--cat-bg-${key}`);
+        r.style.removeProperty(`--cat-border-${key}`);
+      }
+    });
+  }, [userColors]);
   const [currentDate, setCurrentDate] = useState(today());
   const [sites, setSites] = useState(null);
   const [allData, setAllData] = useState({
@@ -1852,6 +1961,7 @@ export default function App() {
       <LandingScreen
         user={user}
         settings={settings} onSaveSettings={saveSettings}
+        cats={cats} userColors={userColors} onSaveColors={saveColors}
         onLogout={() => { setUser(null); setScreen("landing"); }}
         onSelect={(dest) => {
           if (user) { setScreen(dest); }
@@ -1868,7 +1978,7 @@ export default function App() {
     </div>
   );
 
-  const settingsBtn = <SettingsButton user={user} settings={settings} onSaveSettings={saveSettings} />;
+  const settingsBtn = <SettingsButton user={user} settings={settings} onSaveSettings={saveSettings} cats={cats} userColors={userColors} onSaveColors={saveColors} />;
 
   if (screen === "sati") return (
     <div style={{ fontSize: appFont }}>
@@ -1891,7 +2001,7 @@ export default function App() {
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", fontSize: appFont }}>
       {/* Header */}
-      <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
             <MiniLogo size={34} />
@@ -1975,7 +2085,7 @@ export default function App() {
                   duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
                   onDelete={() => deleteSite(site.id)} readOnly={readOnly}
                   dragItem={dragItem} onDragStartItem={handleDragStartItem}
-                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} />
+                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} userColors={userColors} />
               ))}
           </div>
         )}
@@ -1990,6 +2100,7 @@ export default function App() {
           onDragStartItem={handleDragStartItem}
           onDragEndItem={handleDragEndItem}
           cats={cats}
+          userColors={userColors}
         />
       )}
 
