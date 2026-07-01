@@ -129,6 +129,10 @@ const ENGINEERS = [
   { name: "Antonio",  pin: "1005" },
   { name: "Damir",    pin: "1006", admin: true },
   { name: "Tin",      pin: "1007", admin: true },
+  { name: "Gordana",  pin: "1008" },
+  { name: "Ena",      pin: "1009" },
+  { name: "Anita",    pin: "1010" },
+  { name: "Darko",    pin: "1011" },
 ];
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
@@ -821,6 +825,23 @@ function AnalysisScreen({ onBack }) {
             ))}
           </>
         )}
+
+        {/* PIN popis — vidljiv samo adminima */}
+        <div style={{ background: "#fff", borderRadius: 14, padding: 16, marginTop: 16, boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 12 }}>🔑 Popis korisnika i PINova</div>
+          {ENGINEERS.map((e, i) => (
+            <div key={e.name} style={{
+              display: "flex", justifyContent: "space-between", alignItems: "center",
+              padding: "10px 0", borderBottom: i < ENGINEERS.length - 1 ? "1px solid #f1f5f9" : "none"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{e.name}</span>
+                {e.admin && <span style={{ fontSize: 10, fontWeight: 700, color: "#C73E3E", background: "#fef2f2", borderRadius: 4, padding: "2px 6px" }}>ADMIN</span>}
+              </div>
+              <span style={{ fontSize: 16, fontWeight: 800, color: "#64748b", letterSpacing: 3, fontFamily: "monospace" }}>{e.pin}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -1300,14 +1321,13 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
 
 // ── LoginScreen ───────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
-  const [selected, setSelected] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    const eng = ENGINEERS.find(e => e.name === selected);
-    if (!eng) { setError("Odaberi korisnika."); return; }
-    if (eng.pin !== pin) { setError("Pogrešan PIN."); setPin(""); return; }
+    if (pin.length < 4) { setError("Upiši PIN."); return; }
+    const eng = ENGINEERS.find(e => e.pin === pin);
+    if (!eng) { setError("Pogrešan PIN."); setPin(""); return; }
     onLogin(eng);
   };
 
@@ -1327,17 +1347,12 @@ function LoginScreen({ onLogin }) {
               fontSize: 26, margin: "0 auto 8px", color: "#fff"
             }}>🏗️</div>
           )}
-          <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 14 }}>Prijavi se za nastavak</p>
+          <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 14 }}>Upiši PIN za nastavak</p>
         </div>
-        <label style={{ fontSize: 13, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>Odaberi korisnika</label>
-        <select value={selected} onChange={e => setSelected(e.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 15, marginBottom: 14, outline: "none", boxSizing: "border-box", background: "#fff" }}>
-          <option value="">— Odaberi —</option>
-          {ENGINEERS.map(e => <option key={e.name} value={e.name}>{e.name}</option>)}
-        </select>
         <label style={{ fontSize: 13, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 6 }}>PIN</label>
-        <input type="password" placeholder="••••" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()}
-          style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 20, letterSpacing: 8, marginBottom: 6, outline: "none", boxSizing: "border-box" }} />
-        {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px" }}>{error}</p>}
+        <input autoFocus type="password" placeholder="••••" value={pin} onChange={e => setPin(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()}
+          style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", fontSize: 24, letterSpacing: 10, marginBottom: 6, outline: "none", boxSizing: "border-box", textAlign: "center" }} />
+        {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px", textAlign: "center" }}>{error}</p>}
         <button onClick={handleLogin} style={{
           width: "100%", padding: "15px 0",
           background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
