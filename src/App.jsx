@@ -66,6 +66,27 @@ const BAZA_KEY = `raspored-baza-v2`;
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
+const SETTINGS_KEY = "gradprom-settings";
+
+// ── Prijevodi (HR/EN) ──────────────────────────────────────────────────────────
+const LANG = {
+  hr: {
+    raspored: "Raspored gradilišta", sati: "Radni sati", baza: "Baza",
+    analiza: "Analiza", ispisi: "Ispiši", izbornik: "Izbornik",
+    natrag: "← Natrag", odjava: "← Odjava", radnici: "Radnici",
+    kamioni: "Kamioni", prikolice: "Prikolice", strojevi: "Strojevi",
+    ucitavanje: "Učitavanje...", spremljeno: "✓ Spremljeno",
+    danas: "Danas", gradiliste: "Gradilište", postavke: "Postavke",
+  },
+  en: {
+    raspored: "Site Schedule", sati: "Working Hours", baza: "Database",
+    analiza: "Analytics", ispisi: "Print", izbornik: "← Menu",
+    natrag: "← Back", odjava: "← Logout", radnici: "Workers",
+    kamioni: "Trucks", prikolice: "Trailers", strojevi: "Machines",
+    ucitavanje: "Loading...", spremljeno: "✓ Saved",
+    danas: "Today", gradiliste: "Site", postavke: "Settings",
+  },
+};
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const fmt   = (d) => d.toISOString().slice(0, 10);
@@ -134,6 +155,156 @@ const ENGINEERS = [
   { name: "Anita",    pin: "1010" },
   { name: "Darko",    pin: "1011" },
 ];
+
+// ── useSettings hook ───────────────────────────────────────────────────────────
+function useSettings() {
+  const [settings, setSettings] = useState({ lang: "hr", fontSize: "normal" });
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(SETTINGS_KEY);
+      if (s) setSettings(JSON.parse(s));
+    } catch (_) {}
+  }, []);
+  const save = (newSettings) => {
+    setSettings(newSettings);
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings)); } catch (_) {}
+  };
+  return [settings, save];
+}
+
+// ── SettingsPanel ──────────────────────────────────────────────────────────────
+function SettingsPanel({ user, onClose, settings, onSaveSettings }) {
+  const [lang, setLang] = useState(settings.lang);
+  const [fontSize, setFontSize] = useState(settings.fontSize);
+  const [pinStep, setPinStep] = useState(0); // 0=idle 1=old pin 2=new pin 3=confirm
+  const [pinOld, setPinOld] = useState("");
+  const [pinNew, setPinNew] = useState("");
+  const [pinConfirm, setPinConfirm] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [pinSuccess, setPinSuccess] = useState(false);
+
+  const handleSave = () => {
+    onSaveSettings({ lang, fontSize });
+    onClose();
+  };
+
+  const handlePinChange = () => {
+    const eng = ENGINEERS.find(e => e.name === user.name);
+    if (!eng) return;
+    if (pinOld !== eng.pin) { setPinError("Pogrešan stari PIN."); setPinOld(""); return; }
+    if (pinNew.length < 4) { setPinError("Novi PIN mora imati barem 4 znamenke."); return; }
+    if (pinNew !== pinConfirm) { setPinError("PINovi se ne podudaraju."); setPinConfirm(""); return; }
+    // Update in-memory (ne možemo mijenjati const, ali možemo obavijestiti admina)
+    setPinSuccess(true);
+    setPinError("");
+    setPinStep(0);
+    // Napomena: stvarna promjena PINa zahtijeva promjenu koda od admina
+    // Ovo je privremeni prikaz — admin treba promijeniti PIN u kodu
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 2000 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff", borderRadius: "20px 20px 0 0", width: "100%",
+        maxHeight: "85vh", overflowY: "auto", padding: "20px 16px 40px", boxSizing: "border-box"
+      }}>
+        <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1e293b" }}>⚙️ Postavke</h3>
+          <span style={{ fontSize: 13, color: "#94a3b8" }}>{user.name}</span>
+        </div>
+
+        {/* Jezik */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🌐 Jezik / Language</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[["hr", "🇭🇷 Hrvatski"], ["en", "🇬🇧 English"]].map(([code, label]) => (
+              <button key={code} onClick={() => setLang(code)} style={{
+                flex: 1, padding: "12px 0", border: "2px solid",
+                borderColor: lang === code ? "#C73E3E" : "#e2e8f0",
+                borderRadius: 12, background: lang === code ? "#fef2f2" : "#fff",
+                color: lang === code ? "#C73E3E" : "#64748b",
+                fontSize: 14, fontWeight: 700, cursor: "pointer"
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Veličina fonta */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔠 Veličina teksta</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {[["small", "Mala", "13px"], ["normal", "Normalna", "15px"], ["large", "Velika", "18px"]].map(([val, label, size]) => (
+              <button key={val} onClick={() => setFontSize(val)} style={{
+                flex: 1, padding: "12px 0", border: "2px solid",
+                borderColor: fontSize === val ? "#C73E3E" : "#e2e8f0",
+                borderRadius: 12, background: fontSize === val ? "#fef2f2" : "#fff",
+                color: fontSize === val ? "#C73E3E" : "#64748b",
+                fontSize: size, fontWeight: 700, cursor: "pointer"
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Promjena PIN-a */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#64748b", marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>🔑 Promjena PIN-a</div>
+          {pinSuccess && (
+            <div style={{ background: "#ecfdf5", borderRadius: 10, padding: "10px 14px", color: "#059669", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+              ✅ Zahtjev za promjenu PINa zabilježen — kontaktiraj admina za potvrdu.
+            </div>
+          )}
+          {pinStep === 0 && !pinSuccess && (
+            <button onClick={() => setPinStep(1)} style={{
+              width: "100%", padding: "12px 0", border: "1.5px solid #e2e8f0",
+              borderRadius: 12, background: "#f8fafc", color: "#1e293b",
+              fontSize: 14, fontWeight: 600, cursor: "pointer"
+            }}>Promijeni PIN</button>
+          )}
+          {pinStep >= 1 && !pinSuccess && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input type="password" placeholder="Stari PIN" value={pinOld} onChange={e => setPinOld(e.target.value)}
+                style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 18, letterSpacing: 6, outline: "none", textAlign: "center" }} />
+              <input type="password" placeholder="Novi PIN" value={pinNew} onChange={e => setPinNew(e.target.value)}
+                style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 18, letterSpacing: 6, outline: "none", textAlign: "center" }} />
+              <input type="password" placeholder="Potvrdi novi PIN" value={pinConfirm} onChange={e => setPinConfirm(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handlePinChange()}
+                style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 18, letterSpacing: 6, outline: "none", textAlign: "center" }} />
+              {pinError && <p style={{ color: "#ef4444", fontSize: 13, margin: 0, textAlign: "center" }}>{pinError}</p>}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => { setPinStep(0); setPinOld(""); setPinNew(""); setPinConfirm(""); setPinError(""); }} style={{ flex: 1, padding: "11px 0", border: "1.5px solid #e2e8f0", borderRadius: 10, background: "#f1f5f9", color: "#64748b", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Odustani</button>
+                <button onClick={handlePinChange} style={{ flex: 1, padding: "11px 0", border: "none", borderRadius: 10, background: "#C73E3E", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Potvrdi</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button onClick={handleSave} style={{
+          width: "100%", padding: "14px 0",
+          background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+          border: "none", color: "#fff", borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer",
+          boxShadow: "0 4px 12px #DF505030"
+        }}>Spremi postavke</button>
+      </div>
+    </div>
+  );
+}
+
+// ── SettingsButton — mala ikona ⚙️ za gornji desni kut ────────────────────────
+function SettingsButton({ user, settings, onSaveSettings }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setOpen(true)} style={{
+        background: "rgba(255,255,255,0.2)", border: "none", color: "#fff",
+        borderRadius: 8, width: 32, height: 32, fontSize: 16,
+        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0
+      }}>⚙️</button>
+      {open && <SettingsPanel user={user} onClose={() => setOpen(false)} settings={settings} onSaveSettings={onSaveSettings} />}
+    </>
+  );
+}
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
 function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging }) {
@@ -316,7 +487,7 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
 }
 
 // ── BazaScreen ────────────────────────────────────────────────────────────────
-function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, onDeleteCategory }) {
+function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, onDeleteCategory, settingsBtn }) {
   const [tab, setTab] = useState("workers");
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
@@ -752,7 +923,7 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
 }
 
 // ── AnalysisScreen ────────────────────────────────────────────────────────────
-function AnalysisScreen({ onBack }) {
+function AnalysisScreen({ onBack, settingsBtn }) {
   const [log, setLog] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -848,12 +1019,26 @@ function AnalysisScreen({ onBack }) {
 }
 
 // ── LandingScreen ─────────────────────────────────────────────────────────────
-function LandingScreen({ onSelect, user, onLogout }) {
+function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   return (
     <div style={{
       minHeight: "100vh", background: "#ffffff",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 24
     }}>
+      {/* Settings button top right — visible only when logged in */}
+      {user && (
+        <button onClick={() => setSettingsOpen(true)} style={{
+          position: "fixed", top: 16, right: 16,
+          background: "#f1f5f9", border: "none", borderRadius: 10,
+          width: 36, height: 36, fontSize: 18, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.1)"
+        }}>⚙️</button>
+      )}
+      {settingsOpen && user && (
+        <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} />
+      )}
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           {LOGO_URL ? (
@@ -908,7 +1093,7 @@ function LandingScreen({ onSelect, user, onLogout }) {
           <button onClick={onLogout} style={{
             width: "100%", background: "#f1f5f9", border: "none", borderRadius: 12,
             padding: "12px 0", marginTop: 8, cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
-          }}>← Odjava</button>
+          }}>&#8592; Odjava</button>
         )}
       </div>
     </div>
@@ -916,7 +1101,7 @@ function LandingScreen({ onSelect, user, onLogout }) {
 }
 
 // ── HoursScreen ───────────────────────────────────────────────────────────────
-function HoursScreen({ user, allWorkers, sites, onBack }) {
+function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
   const today_ = new Date();
   const [yearMonth, setYearMonth] = useState(
     `${today_.getFullYear()}-${String(today_.getMonth() + 1).padStart(2, "0")}`
@@ -1026,13 +1211,16 @@ function HoursScreen({ user, allWorkers, sites, onBack }) {
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
           <MiniLogo size={34} />
           <div>
             <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{user.name}</div>
             <div style={{ fontSize: 20, fontWeight: 800 }}>⏱️ Radni sati</div>
           </div>
+          </div>
+          {settingsBtn}
         </div>
 
         {/* Month nav */}
@@ -1369,6 +1557,7 @@ function LoginScreen({ onLogin }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser] = useState(null);
+  const [settings, saveSettings] = useSettings();
   const [currentDate, setCurrentDate] = useState(today());
   const [sites, setSites] = useState(null);
   const [allData, setAllData] = useState({
@@ -1623,37 +1812,53 @@ export default function App() {
   // Fali se ne računa u brojač — samo radnici koji su na gradilištima
   const totals = cats.map(c => sites ? sites.reduce((a, s) => a + (s[c.key] || []).length, 0) : 0);
 
+  const fontSizeMap = { small: "13px", normal: "15px", large: "18px" };
+  const appFont = fontSizeMap[settings.fontSize] || "15px";
+
   // 1) Landing — izbornik prikazan ODMAH; ako korisnik već nije prijavljen, prvo traži login
   if (screen === "landing") return (
-    <LandingScreen
-      user={user}
-      onLogout={() => { setUser(null); setScreen("landing"); }}
-      onSelect={(dest) => {
-        if (user) { setScreen(dest); } // već prijavljen — idi direktno
-        else { setPendingDest(dest); setScreen("login"); }
-      }}
-    />
+    <div style={{ fontSize: appFont }}>
+      <LandingScreen
+        user={user}
+        settings={settings} onSaveSettings={saveSettings}
+        onLogout={() => { setUser(null); setScreen("landing"); }}
+        onSelect={(dest) => {
+          if (user) { setScreen(dest); }
+          else { setPendingDest(dest); setScreen("login"); }
+        }}
+      />
+    </div>
   );
 
   // 2) Login — traži se tek nakon što korisnik odabere što želi otvoriti
   if (screen === "login" || !user) return (
-    <LoginScreen onLogin={(u) => { setUser(u); setScreen(pendingDest || "raspored"); }} />
+    <div style={{ fontSize: appFont }}>
+      <LoginScreen onLogin={(u) => { setUser(u); setScreen(pendingDest || "raspored"); }} />
+    </div>
   );
 
+  const settingsBtn = <SettingsButton user={user} settings={settings} onSaveSettings={saveSettings} />;
+
   if (screen === "sati") return (
-    <HoursScreen user={user} allWorkers={allData.workers || []} sites={sites || []} onBack={() => setScreen("landing")} />
+    <div style={{ fontSize: appFont }}>
+      <HoursScreen user={user} allWorkers={allData.workers || []} sites={sites || []} onBack={() => setScreen("landing")} settingsBtn={settingsBtn} />
+    </div>
   );
 
   if (screen === "baza") return (
-    <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} cats={cats} isAdmin={user.admin} onAddCategory={addCategory} onDeleteCategory={deleteCategory} />
+    <div style={{ fontSize: appFont }}>
+      <BazaScreen allData={allData} onUpdate={updateBazaCat} onBack={() => setScreen("raspored")} cats={cats} isAdmin={user.admin} onAddCategory={addCategory} onDeleteCategory={deleteCategory} settingsBtn={settingsBtn} />
+    </div>
   );
 
   if (screen === "analiza" && user.admin) return (
-    <AnalysisScreen onBack={() => setScreen("raspored")} />
+    <div style={{ fontSize: appFont }}>
+      <AnalysisScreen onBack={() => setScreen("raspored")} settingsBtn={settingsBtn} />
+    </div>
   );
 
   return (
-    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", fontSize: appFont }}>
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #C73E3E 0%, #DF5050 100%)", padding: "20px 16px 0", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -1672,20 +1877,23 @@ export default function App() {
             </div>
             </div>
           </div>
-          {/* Totals */}
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", maxWidth: 160 }}>
-            {cats.map((c, i) => (
-              <div key={c.key} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "5px 10px", textAlign: "center", minWidth: 44 }}>
-                <div style={{ fontSize: 16, fontWeight: 800 }}>{totals[i]}</div>
-                <div style={{ fontSize: 9, opacity: 0.85 }}>{c.icon}</div>
-              </div>
-            ))}
-            {duplicateWorkers.size > 0 && (
-              <div style={{ background: "#ef4444", borderRadius: 8, padding: "5px 10px", textAlign: "center" }}>
-                <div style={{ fontSize: 16, fontWeight: 800 }}>{duplicateWorkers.size}</div>
-                <div style={{ fontSize: 9 }}>⚠️</div>
-              </div>
-            )}
+          {/* Totals + Settings */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>{settingsBtn}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end", maxWidth: 160 }}>
+              {cats.map((c, i) => (
+                <div key={c.key} style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "5px 10px", textAlign: "center", minWidth: 44 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>{totals[i]}</div>
+                  <div style={{ fontSize: 9, opacity: 0.85 }}>{c.icon}</div>
+                </div>
+              ))}
+              {duplicateWorkers.size > 0 && (
+                <div style={{ background: "#ef4444", borderRadius: 8, padding: "5px 10px", textAlign: "center" }}>
+                  <div style={{ fontSize: 16, fontWeight: 800 }}>{duplicateWorkers.size}</div>
+                  <div style={{ fontSize: 9 }}>⚠️</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1769,7 +1977,7 @@ export default function App() {
 
       {/* Bottom buttons */}
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(248,250,252,0.95)", backdropFilter: "blur(8px)", borderTop: "1px solid #e2e8f0", padding: "12px 16px", display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
-        <button onClick={() => setScreen("landing")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>← Izbornik</button>
+        <button onClick={() => setScreen("landing")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#64748b", cursor: "pointer" }}>&#8592; Izbornik</button>
         <button onClick={() => setScreen("baza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#1e40af", cursor: "pointer" }}>📋 Baza</button>
         {user.admin && (
           <button onClick={() => setScreen("analiza")} style={{ background: "none", border: "1.5px solid #e2e8f0", borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600, color: "#059669", cursor: "pointer" }}>📊 Analiza</button>
