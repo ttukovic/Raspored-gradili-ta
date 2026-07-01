@@ -405,28 +405,71 @@ function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSa
 }
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
-function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging }) {
+function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging, onClick, hasNote }) {
+  const [dragStarted, setDragStarted] = useState(false);
   return (
     <span
       draggable={draggable}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
+      onDragStart={(e) => { setDragStarted(true); onDragStart && onDragStart(e); }}
+      onDragEnd={(e) => { setDragStarted(false); onDragEnd && onDragEnd(e); }}
+      onClick={(e) => { if (!dragStarted && onClick) { e.stopPropagation(); onClick(); } }}
       style={{
         display: "inline-flex", alignItems: "center", gap: 3,
         background: warn ? "#ef4444" : color,
         borderRadius: 6, padding: "2px 8px",
         fontSize: 12, fontWeight: 600, color: "#fff", margin: "2px", whiteSpace: "nowrap",
-        cursor: draggable ? "grab" : "default",
+        cursor: draggable ? "grab" : onClick ? "pointer" : "default",
         opacity: isDragging ? 0.4 : 1,
       }}>
       {warn && "⚠️ "}{label}
+      {hasNote && <span style={{ fontSize: 10, marginLeft: 2 }}>⭐</span>}
       {onRemove && (
-        <button onClick={onRemove} style={{
+        <button onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{
           background: "none", border: "none", color: "#fff",
           cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2
         }}>×</button>
       )}
     </span>
+  );
+}
+
+// ── NoteModal — napomena za radnika na gradilištu ──────────────────────────────
+function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose }) {
+  const [text, setText] = useState(note || "");
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 3000 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff", borderRadius: "20px 20px 0 0", width: "100%",
+        padding: "24px 16px 32px", boxSizing: "border-box"
+      }}>
+        <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>📝 Napomena</div>
+          <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{worker} · {siteName}</div>
+        </div>
+        <textarea
+          autoFocus
+          value={text}
+          onChange={e => setText(e.target.value)}
+          placeholder="Upiši napomenu za ovog radnika..."
+          rows={4}
+          style={{
+            width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0",
+            borderRadius: 12, padding: "12px 14px", fontSize: 14, outline: "none",
+            resize: "none", fontFamily: "inherit", marginBottom: 14
+          }}
+        />
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: "12px 0", background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Odustani</button>
+          {text && text !== note && (
+            <button onClick={() => { onSave(text.trim()); onClose(); }} style={{ flex: 2, padding: "12px 0", background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E, #DF5050))", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Spremi napomenu</button>
+          )}
+          {note && (
+            <button onClick={() => { onSave(""); onClose(); }} style={{ padding: "12px 14px", background: "#fef2f2", color: "#ef4444", border: "none", borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Obriši</button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -496,12 +539,20 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 // ── SiteCard ──────────────────────────────────────────────────────────────────
 function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats, userColors }) {
   const [modal, setModal] = useState(null); // cat key or null
-  const [dragOverCat, setDragOverCat] = useState(null); // koja kategorija je trenutno "meta" za drop
+  const [dragOverCat, setDragOverCat] = useState(null);
+  const [noteModal, setNoteModal] = useState(null); // { worker } or null
 
   const addItem = (cat, val) => {
     if (!site[cat].includes(val)) onUpdate({ ...site, [cat]: [...site[cat], val] });
   };
   const removeItem = (cat, val) => onUpdate({ ...site, [cat]: site[cat].filter(x => x !== val) });
+
+  const saveNote = (worker, text) => {
+    const notes = { ...(site.notes || {}) };
+    if (text) notes[worker] = text;
+    else delete notes[worker];
+    onUpdate({ ...site, notes });
+  };
 
   const hasAny = cats.some(c => site[c.key]?.length > 0);
 
@@ -545,6 +596,8 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
                 {(site[cat.key] || []).map(val => (
                   <Badge key={val} label={val} color={getCatColor(cat.key, userColors).color}
                     warn={cat.key === "workers" && duplicateWorkers.has(val)}
+                    hasNote={cat.key === "workers" && !!(site.notes?.[val])}
+                    onClick={cat.key === "workers" && !readOnly ? () => setNoteModal({ worker: val }) : undefined}
                     onRemove={readOnly ? null : () => removeItem(cat.key, val)}
                     draggable={!readOnly}
                     isDragging={dragItem && dragItem.value === val && dragItem.siteId === site.id && dragItem.cat === cat.key}
@@ -569,15 +622,23 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
         <BottomSheet
           title={`Dodaj ${cats.find(c => c.key === modal)?.label.toLowerCase().replace(/i$/, "")}`}
           options={(allData[modal] || []).filter(v => {
-              // Already on THIS site — hide
               if ((site[modal] || []).includes(v)) return false;
-              // Already on ANY other site — hide
               const usedElsewhere = allSites.some(s => s.id !== site.id && (s[modal] || []).includes(v));
               if (usedElsewhere) return false;
               return true;
             })}
           onAdd={(val) => addItem(modal, val)}
           onClose={() => setModal(null)}
+        />
+      )}
+      {noteModal && (
+        <NoteModal
+          worker={noteModal.worker}
+          siteId={site.id}
+          siteName={site.name}
+          note={site.notes?.[noteModal.worker] || ""}
+          onSave={(text) => saveNote(noteModal.worker, text)}
+          onClose={() => setNoteModal(null)}
         />
       )}
     </div>
@@ -1219,12 +1280,36 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
   const [search, setSearch] = useState("");
   const [editModal, setEditModal] = useState(null); // { worker, day }
   const [editValue, setEditValue] = useState("");
+  const [dayNotes, setDayNotes] = useState({}); // { day: { worker: "napomena" } }
 
   const [y, m] = yearMonth.split("-").map(Number);
   const daysInMonth = new Date(y, m, 0).getDate();
   const monthLabel = new Date(y, m - 1, 1).toLocaleDateString("hr-HR", { month: "long", year: "numeric" });
   const firstDayOfWeek = (new Date(y, m - 1, 1).getDay() + 6) % 7; // 0=Pon
   const DAY_LABELS = ["Po", "Ut", "Sr", "Če", "Pe", "Su", "Ne"];
+
+  // Učitaj napomene iz svih rasporeda u ovom mjesecu
+  useEffect(() => {
+    const loadNotes = async () => {
+      const notes = {};
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        try {
+          const res = await storage.get(`raspored-day-${dateStr}`);
+          if (res?.value) {
+            const data = JSON.parse(res.value);
+            const dayNote = {};
+            (data.sites || []).forEach(site => {
+              if (site.notes) Object.assign(dayNote, site.notes);
+            });
+            if (Object.keys(dayNote).length > 0) notes[d] = dayNote;
+          }
+        } catch (_) {}
+      }
+      setDayNotes(notes);
+    };
+    loadNotes();
+  }, [yearMonth, y, m, daysInMonth]);
 
   useEffect(() => {
     setLoading(true);
@@ -1403,12 +1488,15 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
               <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
                 {filteredWorkers.map((w, i) => {
                   const hours = getDayHours(w, selectedDay);
+                  const hasNote = !!(dayNotes[selectedDay]?.[w]);
                   return (
                     <div key={w} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "11px 16px", borderBottom: i < filteredWorkers.length - 1 ? "1px solid #f1f5f9" : "none"
                     }}>
-                      <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>{w}</span>
+                      <span style={{ fontSize: 14, color: "#1e293b", fontWeight: 500 }}>
+                        {w} {hasNote && <span title={dayNotes[selectedDay][w]} style={{ fontSize: 12 }}>⭐</span>}
+                      </span>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <button onClick={() => setDayHours(w, selectedDay, 0)} style={{
                           fontSize: 11, padding: "3px 7px", borderRadius: 6, border: "1.5px solid #fecaca",
@@ -1493,8 +1581,30 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
 function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayHours, setDayHours, monthTotal, onBack }) {
   const [editDay, setEditDay] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [workerNotes, setWorkerNotes] = useState({}); // { day: "napomena" }
 
   const [y, m] = yearMonth.split("-").map(Number);
+
+  // Učitaj napomene za ovog radnika iz rasporeda svakog dana
+  useEffect(() => {
+    const loadNotes = async () => {
+      const notes = {};
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        try {
+          const res = await storage.get(`raspored-day-${dateStr}`);
+          if (res?.value) {
+            const data = JSON.parse(res.value);
+            (data.sites || []).forEach(site => {
+              if (site.notes?.[worker]) notes[d] = site.notes[worker];
+            });
+          }
+        } catch (_) {}
+      }
+      setWorkerNotes(notes);
+    };
+    loadNotes();
+  }, [worker, yearMonth, y, m, daysInMonth]);
 
   const dayLabel = (day) => {
     const d = new Date(y, m - 1, day);
@@ -1548,6 +1658,7 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
           {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
             const hours = getDayHours(worker, day);
             const weekend = isWeekend(day);
+            const note = workerNotes[day];
             return (
               <div key={day} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -1557,6 +1668,7 @@ function WorkerHoursDetail({ worker, yearMonth, monthLabel, daysInMonth, getDayH
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: weekend ? "#cbd5e1" : "#1e293b", minWidth: 24 }}>{day}.</span>
                   <span style={{ fontSize: 12, color: "#94a3b8", textTransform: "capitalize" }}>{dayLabel(day)}</span>
+                  {note && <span title={note} style={{ fontSize: 12, cursor: "help" }}>⭐</span>}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <button onClick={() => quickSet(day, 0)} style={{
