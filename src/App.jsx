@@ -104,7 +104,7 @@ const DEFAULT_CATS = [
   { key: "workers", label: "Radnici", icon: "", color: "#3b82f6", bg: "#eff6ff", border: "#3b82f6" },
   { key: "trucks", label: "Kamioni", icon: "", color: "#f97316", bg: "#fff7ed", border: "#f97316" },
   { key: "trailers", label: "Prikolice", icon: "", color: "#8b5cf6", bg: "#f5f3ff", border: "#8b5cf6" },
-  { key: "machines", label: "Strojevi", icon: "Postavke", color: "#059669", bg: "#ecfdf5", border: "#059669" },
+  { key: "machines", label: "Strojevi", icon: "", color: "#059669", bg: "#ecfdf5", border: "#059669" },
 ];
 const CATS_KEY = `raspored-categories`;
 // Paleta boja za nove kategorije koje admin doda
@@ -296,7 +296,7 @@ function SettingsPanel({ user, onClose, settings, onSaveSettings, cats, userColo
       }}>
         <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1e293b" }}>Postavke Postavke</h3>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#1e293b" }}>⚙️ Postavke</h3>
           <span style={{ fontSize: 13, color: "#94a3b8" }}>{user.name}</span>
         </div>
 
@@ -401,7 +401,7 @@ function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSa
         borderRadius: 8, width: 32, height: 32, fontSize: 16,
         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0
-      }}>Postavke</button>
+      }}>⚙️</button>
       {open && <SettingsPanel user={user} onClose={() => setOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />}
     </>
   );
@@ -1423,7 +1423,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
           width: 36, height: 36, fontSize: 18, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
           boxShadow: "0 1px 4px rgba(0,0,0,0.1)"
-        }}>Postavke</button>
+        }}>⚙️</button>
       )}
       {settingsOpen && user && (
         <SettingsPanel user={user} onClose={() => setSettingsOpen(false)} settings={settings} onSaveSettings={onSaveSettings} cats={cats} userColors={userColors} onSaveColors={onSaveColors} />
@@ -2238,7 +2238,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                     boxShadow:"0 8px 24px #DF505030,inset 0 1px 0 rgba(255,255,255,0.35)",
                     display:"flex",flexDirection:"column",alignItems:"center",gap:10
                   }}>
-                    <span style={{fontSize:36}}>{cat.icon}</span>
+                    
                     <div>
                       <div style={{fontSize:15,fontWeight:800,color:"#fff"}}>{cat.label}</div>
                       <div style={{fontSize:11,color:"rgba(255,255,255,0.8)",marginTop:2}}>
