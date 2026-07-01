@@ -64,8 +64,9 @@ const makeEmptySites = () => [
 const dateKey  = (d) => `raspored-day-${d}`;
 const BAZA_KEY = `raspored-baza-v2`;
 const ITEM_DETAILS_KEY = `raspored-item-details`; // detalji o vozilima/strojevima/svim stavkama
-const RADIONICA_KEY = `gradprom-radionica`; // servisni unosi: { "catKey:itemName": [{ id, datum, opis, km, sati, trosak, mehanicар, status }] }
-const RADIONICA_TASKS_KEY = `gradprom-radionica-tasks`; // planirani zadaci za 14 dana: [{ id, itemKey, itemName, datum, opis, status }]
+const RADIONICA_KEY = `gradprom-radionica`;
+const RADIONICA_TASKS_KEY = `gradprom-radionica-tasks`;
+const RADIONICA_CATS_KEY = `gradprom-radionica-cats`; // extra kategorije samo za radionicu
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
@@ -408,7 +409,7 @@ function SettingsButton({ user, settings, onSaveSettings, cats, userColors, onSa
 }
 
 // ── Badge ─────────────────────────────────────────────────────────────────────
-function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging, onClick, hasNote, isBirthday }) {
+function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd, isDragging, onClick, hasNote, isBirthday, noteEmoji = "⭐" }) {
   const [dragStarted, setDragStarted] = useState(false);
   return (
     <span
@@ -426,7 +427,7 @@ function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd
       }}>
       {warn && "⚠️ "}{label}
       {isBirthday && <span style={{ fontSize: 11, marginLeft: 2 }}>🎂</span>}
-      {hasNote && <span style={{ fontSize: 10, marginLeft: 2 }}>⭐</span>}
+      {hasNote && <span style={{ fontSize: 10, marginLeft: 2 }}>{noteEmoji}</span>}
       {onRemove && (
         <button onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{
           background: "none", border: "none", color: "#fff",
@@ -438,7 +439,7 @@ function Badge({ label, color, onRemove, warn, draggable, onDragStart, onDragEnd
 }
 
 // ── NoteModal — napomena za radnika na gradilištu ──────────────────────────────
-function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose }) {
+function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose, isVehicle }) {
   const [text, setText] = useState(note || "");
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 3000 }} onClick={onClose}>
@@ -448,14 +449,19 @@ function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose }) {
       }}>
         <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>📝 Napomena</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#1e293b" }}>{isVehicle ? "🔧 Kvar / napomena" : "📝 Napomena"}</div>
           <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>{worker} · {siteName}</div>
+          {isVehicle && (
+            <div style={{ background: "#fef9c3", border: "1px solid #fde047", borderRadius: 8, padding: "8px 12px", marginTop: 10, fontSize: 12, color: "#854d0e", fontWeight: 600 }}>
+              ⚡ Napomena će automatski kreirati prioritetni zadatak u Radionici za danas!
+            </div>
+          )}
         </div>
         <textarea
           autoFocus
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Upiši napomenu za ovog radnika..."
+          placeholder={isVehicle ? "Opiši kvar ili što treba odraditi..." : "Upiši napomenu za ovog radnika..."}
           rows={4}
           style={{
             width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0",
@@ -560,11 +566,38 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
   };
   const removeItem = (cat, val) => onUpdate({ ...site, [cat]: site[cat].filter(x => x !== val) });
 
-  const saveNote = (worker, text) => {
+  const saveNote = async (itemName, text, catKey) => {
     const notes = { ...(site.notes || {}) };
-    if (text) notes[worker] = text;
-    else delete notes[worker];
+    if (text) notes[itemName] = text;
+    else delete notes[itemName];
     onUpdate({ ...site, notes });
+
+    // Ako je napomena na vozilo/stroj (ne radnika) — automatski kreiraj prioritetni zadatak u Radionici
+    if (catKey && catKey !== "workers" && text) {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const tasksRes = await storage.get(RADIONICA_TASKS_KEY);
+        const existingTasks = tasksRes?.value ? JSON.parse(tasksRes.value) : [];
+        // Provjeri nije li već postoji isti zadatak za danas
+        const alreadyExists = existingTasks.some(t =>
+          t.itemKey === `${catKey}:${itemName}` && t.datum === today && t.opis === text && t.status === "pending"
+        );
+        if (!alreadyExists) {
+          const newTask = {
+            id: Date.now().toString(),
+            itemKey: `${catKey}:${itemName}`,
+            itemName,
+            catIcon: "🔧",
+            datum: today,
+            opis: text,
+            status: "pending",
+            created: "Raspored",
+            priority: true, // označen kao prioritet
+          };
+          await storage.set(RADIONICA_TASKS_KEY, JSON.stringify([...existingTasks, newTask]));
+        }
+      } catch (_) {}
+    }
   };
 
   const hasAny = cats.some(c => site[c.key]?.length > 0);
@@ -609,9 +642,10 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
                 {(site[cat.key] || []).map(val => (
                   <Badge key={val} label={val} color={getCatColor(cat.key, userColors).color}
                     warn={cat.key === "workers" && duplicateWorkers.has(val)}
-                    hasNote={cat.key === "workers" && !!(site.notes?.[val])}
+                    hasNote={!!(site.notes?.[val])}
                     isBirthday={cat.key === "workers" && isBirthday(val)}
-                    onClick={cat.key === "workers" && !readOnly ? () => setNoteModal({ worker: val }) : undefined}
+                    noteEmoji={cat.key === "workers" ? "⭐" : "🔧"}
+                    onClick={!readOnly ? () => setNoteModal({ worker: val, cat: cat.key }) : undefined}
                     onRemove={readOnly ? null : () => removeItem(cat.key, val)}
                     draggable={!readOnly}
                     isDragging={dragItem && dragItem.value === val && dragItem.siteId === site.id && dragItem.cat === cat.key}
@@ -650,8 +684,9 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
           worker={noteModal.worker}
           siteId={site.id}
           siteName={site.name}
+          isVehicle={noteModal.cat && noteModal.cat !== "workers"}
           note={site.notes?.[noteModal.worker] || ""}
-          onSave={(text) => saveNote(noteModal.worker, text)}
+          onSave={(text) => saveNote(noteModal.worker, text, noteModal.cat)}
           onClose={() => setNoteModal(null)}
         />
       )}
@@ -1965,31 +2000,72 @@ function LoginScreen({ onLogin }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── RadionicaScreen ───────────────────────────────────────────────────────────
 function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) {
-  const [view, setView] = useState("pregled"); // "pregled" | "zadaci"
-  const [selectedCat, setSelectedCat] = useState(null); // odabrana kategorija (bez radnika)
-  const [selectedItem, setSelectedItem] = useState(null); // { key, name, catKey, catLabel, catIcon }
+  const [view, setView] = useState("pregled");
+  const [selectedCat, setSelectedCat] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [servisData, setServisData] = useState({});
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddServis, setShowAddServis] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
+  const [showAddCat, setShowAddCat] = useState(false);
   const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
   const [newTask, setNewTask] = useState({ datum: "", opis: "", itemKey: "" });
+  const [newCat, setNewCat] = useState({ label: "", icon: "🔩" });
+  const [extraCats, setExtraCats] = useState([]); // extra kategorije samo za radionicu
+  const [extraData, setExtraData] = useState({}); // { catKey: ["naziv1", ...] }
+  const [newItemName, setNewItemName] = useState("");
 
-  // Kategorije bez radnika
-  const radionicaCats = cats.filter(c => c.key !== "workers");
+  // Spoji raspored kategorije (bez radnika) + radionica-only kategorije
+  const radionicaCats = [
+    ...cats.filter(c => c.key !== "workers"),
+    ...extraCats,
+  ];
+
+  // Svi podaci uključujući extra
+  const allRadionicaData = { ...allData, ...extraData };
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
       storage.get(RADIONICA_KEY).catch(() => null),
       storage.get(RADIONICA_TASKS_KEY).catch(() => null),
-    ]).then(([sRes, tRes]) => {
+      storage.get(RADIONICA_CATS_KEY).catch(() => null),
+    ]).then(([sRes, tRes, cRes]) => {
       if (sRes?.value) setServisData(JSON.parse(sRes.value));
       if (tRes?.value) setTasks(JSON.parse(tRes.value));
+      if (cRes?.value) {
+        const saved = JSON.parse(cRes.value);
+        setExtraCats(saved.cats || []);
+        setExtraData(saved.data || {});
+      }
       setLoading(false);
     });
   }, []);
+
+  const saveExtraCats = async (newCats, newData) => {
+    setExtraCats(newCats);
+    setExtraData(newData);
+    try { await storage.set(RADIONICA_CATS_KEY, JSON.stringify({ cats: newCats, data: newData })); } catch (_) {}
+  };
+
+  const addCategory = async () => {
+    const label = newCat.label.trim();
+    if (!label) return;
+    const key = `rad_${label.toLowerCase().replace(/[čć]/g,"c").replace(/š/g,"s").replace(/ž/g,"z").replace(/đ/g,"dj").replace(/[^a-z0-9]+/g,"_")}_${Date.now().toString(36)}`;
+    const cat = { key, label, icon: newCat.icon || "🔩", color: "#64748b", bg: "#f8fafc", border: "#64748b" };
+    await saveExtraCats([...extraCats, cat], { ...extraData, [key]: [] });
+    setNewCat({ label: "", icon: "🔩" });
+    setShowAddCat(false);
+  };
+
+  const addItemToExtraCat = async (catKey) => {
+    const name = newItemName.trim();
+    if (!name || (extraData[catKey] || []).includes(name)) return;
+    const updated = { ...extraData, [catKey]: [...(extraData[catKey] || []), name] };
+    await saveExtraCats(extraCats, updated);
+    setNewItemName("");
+  };
 
   const saveServis = async (newData) => {
     setServisData(newData);
@@ -2178,7 +2254,12 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
               <div style={{ fontSize: 18, fontWeight: 800 }}>🔧 Radionica</div>
             </div>
           </div>
-          {settingsBtn}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {isAdmin && view === "pregled" && !selectedCat && (
+              <button onClick={() => setShowAddCat(true)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Kat.</button>
+            )}
+            {settingsBtn}
+          </div>
         </div>
         <div style={{ display: "flex", gap: 4, paddingBottom: 0 }}>
           {[["pregled", "🔧 Vozila i strojevi"], ["zadaci", "📋 Zadaci (14 dana)"]].map(([v, l]) => (
@@ -2203,7 +2284,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
               <div style={{ padding: "8px 0" }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
                   {radionicaCats.map(cat => {
-                    const items = allData[cat.key] || [];
+                    const items = allRadionicaData[cat.key] || [];
                     const totalEntries = items.reduce((a, name) => a + (servisData[`${cat.key}:${name}`] || []).length, 0);
                     return (
                       <button key={cat.key} onClick={() => setSelectedCat(cat)} style={{
@@ -2226,15 +2307,27 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                 </div>
               </div>
             ) : (
-              /* Lista vozila/strojeva unutar odabrane kategorije */
+              /* Lista stavki unutar odabrane kategorije */
               <>
                 <button onClick={() => setSelectedCat(null)} style={{
                   background: "#f1f5f9", border: "none", borderRadius: 10,
                   padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#64748b",
                   cursor: "pointer", marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6
                 }}>← {selectedCat.label}</button>
+
+                {/* Dodaj stavku za extra kategorije */}
+                {extraCats.find(c => c.key === selectedCat.key) && (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                    <input value={newItemName} onChange={e => setNewItemName(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && addItemToExtraCat(selectedCat.key)}
+                      placeholder={`Dodaj stavku (${selectedCat.label.toLowerCase()})...`}
+                      style={{ flex: 1, border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none" }} />
+                    <button onClick={() => addItemToExtraCat(selectedCat.key)} style={{ background: "#C73E3E", color: "#fff", border: "none", borderRadius: 10, padding: "10px 16px", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>+</button>
+                  </div>
+                )}
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[...(allData[selectedCat.key] || [])].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name => {
+                  {[...(allRadionicaData[selectedCat.key] || [])].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name => {
                     const key = `${selectedCat.key}:${name}`;
                     const last = getLastServis(key);
                     const total = getTotalCost(key);
@@ -2342,6 +2435,25 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
           </div>
         </div>
       )}
+
+      {/* Add category modal */}
+      {showAddCat && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", zIndex: 2000 }} onClick={() => setShowAddCat(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "20px 20px 0 0", width: "100%", padding: "24px 16px 32px", boxSizing: "border-box" }}>
+            <div style={{ width: 40, height: 4, background: "#ddd", borderRadius: 2, margin: "0 auto 20px" }} />
+            <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 800 }}>Nova kategorija (samo Radionica)</h3>
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Naziv</label>
+            <input autoFocus value={newCat.label} onChange={e => setNewCat(f => ({ ...f, label: e.target.value }))}
+              onKeyDown={e => e.key === "Enter" && addCategory()}
+              placeholder="npr. Alati, Gume, Rezervni dijelovi..."
+              style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", marginBottom: 12 }} />
+            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748b", display: "block", marginBottom: 4, textTransform: "uppercase" }}>Emoji ikona</label>
+            <input value={newCat.icon} onChange={e => setNewCat(f => ({ ...f, icon: e.target.value }))}
+              style={{ width: 60, border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 20, outline: "none", textAlign: "center", marginBottom: 16 }} />
+            <button onClick={addCategory} style={{ width: "100%", padding: "13px 0", background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))", border: "none", color: "#fff", borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>Dodaj kategoriju</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2354,8 +2466,8 @@ function TaskCard({ task, onDone, onSkip, onDelete, formatDate, daysUntil, overd
 
   return (
     <div style={{
-      background: done ? "#f0fdf4" : skipped ? "#f8fafc" : overdue ? "#fef2f2" : "#fff",
-      border: `1.5px solid ${done ? "#bbf7d0" : skipped ? "#e2e8f0" : overdue ? "#fecaca" : "#f1f5f9"}`,
+      background: done ? "#f0fdf4" : skipped ? "#f8fafc" : task.priority ? "#fffbeb" : overdue ? "#fef2f2" : "#fff",
+      border: `1.5px solid ${done ? "#bbf7d0" : skipped ? "#e2e8f0" : task.priority ? "#fde047" : overdue ? "#fecaca" : "#f1f5f9"}`,
       borderRadius: 12, padding: "12px 14px", marginBottom: 8,
       opacity: done || skipped ? 0.7 : 1
     }}>
@@ -2371,6 +2483,9 @@ function TaskCard({ task, onDone, onSkip, onDelete, formatDate, daysUntil, overd
             }}>
               {done ? "✓ Završeno" : skipped ? "✗ Preskočeno" : overdue ? `${Math.abs(days)} dana kasni` : days === 0 ? "Danas" : days === 1 ? "Sutra" : `za ${days} dana`}
             </span>
+            {task.priority && !done && !skipped && (
+              <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 6, padding: "1px 7px", background: "#fef9c3", color: "#854d0e" }}>⚡ Prioritet</span>
+            )}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: done || skipped ? "#94a3b8" : "#1e293b", textDecoration: done || skipped ? "line-through" : "none" }}>{task.opis}</div>
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{formatDate(task.datum)} · {task.created}</div>
