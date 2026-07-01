@@ -651,6 +651,8 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editItem, setEditItem] = useState(null); // naziv koji se uređuje
+  const [editValue, setEditValue] = useState("");
   const [showAddCat, setShowAddCat] = useState(false);
   const [newCatLabel, setNewCatLabel] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("🔧");
@@ -672,6 +674,21 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
   const deleteItem = (name) => {
     onUpdate(tab, items.filter(i => i !== name));
     setConfirmDelete(null);
+  };
+
+  const startEdit = (name) => {
+    setEditItem(name);
+    setEditValue(name);
+  };
+
+  const confirmRename = () => {
+    const newVal = editValue.trim();
+    if (!newVal || newVal === editItem) { setEditItem(null); return; }
+    if (items.includes(newVal)) { setEditItem(null); return; } // već postoji
+    const updated = items.map(i => i === editItem ? newVal : i)
+      .sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+    onUpdate(tab, updated);
+    setEditItem(null);
   };
 
   const handleAddCategory = () => {
@@ -745,9 +762,30 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
             </div>
           )}
           {filtered.map((item, i) => (
-            <div key={item} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none" }}>
-              <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{item}</span>
-              <button onClick={() => setConfirmDelete(item)} style={{ background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 8, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Obriši</button>
+            <div key={item} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none" }}>
+              {editItem === item ? (
+                /* Inline edit mode */
+                <div style={{ display: "flex", gap: 8, flex: 1 }}>
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={e => setEditValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") confirmRename(); if (e.key === "Escape") setEditItem(null); }}
+                    style={{ flex: 1, border: "1.5px solid #C73E3E", borderRadius: 8, padding: "6px 10px", fontSize: 14, outline: "none" }}
+                  />
+                  <button onClick={confirmRename} style={{ background: "#C73E3E", color: "#fff", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>✓</button>
+                  <button onClick={() => setEditItem(null)} style={{ background: "#f1f5f9", color: "#64748b", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 13, cursor: "pointer" }}>✕</button>
+                </div>
+              ) : (
+                /* Normal mode */
+                <>
+                  <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500, flex: 1 }}>{item}</span>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => startEdit(item)} style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#64748b", borderRadius: 8, padding: "5px 10px", fontSize: 13, cursor: "pointer" }}>✏️</button>
+                    <button onClick={() => setConfirmDelete(item)} style={{ background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 8, padding: "5px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🗑</button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
