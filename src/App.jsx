@@ -63,6 +63,7 @@ const makeEmptySites = () => [
 // ── Storage ───────────────────────────────────────────────────────────────────
 const dateKey  = (d) => `raspored-day-${d}`;
 const BAZA_KEY = `raspored-baza-v2`;
+const ITEM_DETAILS_KEY = `raspored-item-details`; // detalji o vozilima/strojevima/svim stavkama
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
 const STANDARD_DAILY_HOURS = 9;
@@ -645,6 +646,82 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
   );
 }
 
+// ── ItemDetailScreen ───────────────────────────────────────────────────────────
+function ItemDetailScreen({ item, catLabel, catIcon, onBack, details, onSave }) {
+  const [form, setForm] = useState({
+    model:        details?.model        || "",
+    godina:       details?.godina       || "",
+    registracija: details?.registracija || "",
+    cijena:       details?.cijena       || "",
+    datumKupnje:  details?.datumKupnje  || "",
+    napomena:     details?.napomena     || "",
+  });
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    await onSave(form);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const field = (label, key, placeholder, type = "text") => (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>{label}</label>
+      {key === "napomena" ? (
+        <textarea
+          value={form[key]}
+          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+          placeholder={placeholder}
+          rows={3}
+          style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none", resize: "vertical", fontFamily: "inherit" }}
+        />
+      ) : (
+        <input
+          type={type}
+          value={form[key]}
+          onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+          placeholder={placeholder}
+          style={{ width: "100%", boxSizing: "border-box", border: "1.5px solid #e2e8f0", borderRadius: 10, padding: "10px 14px", fontSize: 14, outline: "none" }}
+        />
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <MiniLogo size={34} />
+          <div>
+            <div style={{ fontSize: 11, opacity: 0.8, letterSpacing: 1, textTransform: "uppercase" }}>{catIcon} {catLabel}</div>
+            <div style={{ fontSize: 20, fontWeight: 800 }}>{item}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        <div style={{ background: "#fff", borderRadius: 14, padding: 20, boxShadow: "0 1px 6px rgba(0,0,0,0.07)", marginBottom: 16 }}>
+          {field("Model / Marka", "model", "npr. Volvo FH16, Kubota M7131...")}
+          {field("Godina proizvodnje", "godina", "npr. 2019", "number")}
+          {field("Registracija / Serijski broj", "registracija", "npr. ZG 1234 AB")}
+          {field("Cijena kupnje (€)", "cijena", "npr. 85000", "number")}
+          {field("Datum kupnje", "datumKupnje", "", "date")}
+          {field("Napomena / Opis", "napomena", "Dodatne informacije...")}
+        </div>
+
+        <button onClick={handleSave} style={{
+          width: "100%", padding: "14px 0",
+          background: saved ? "#059669" : "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
+          border: "none", color: "#fff", borderRadius: 14,
+          fontSize: 16, fontWeight: 800, cursor: "pointer",
+          transition: "background 0.3s"
+        }}>{saved ? "✓ Spremljeno!" : "Spremi podatke"}</button>
+      </div>
+    </div>
+  );
+}
+
 // ── BazaScreen ────────────────────────────────────────────────────────────────
 function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, onDeleteCategory, settingsBtn }) {
   const [tab, setTab] = useState("workers");
@@ -657,6 +734,38 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
   const [newCatLabel, setNewCatLabel] = useState("");
   const [newCatIcon, setNewCatIcon] = useState("🔧");
   const [confirmDeleteCat, setConfirmDeleteCat] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null); // { name, catKey }
+  const [allDetails, setAllDetails] = useState({});
+
+  useEffect(() => {
+    storage.get(ITEM_DETAILS_KEY).then(res => {
+      if (res?.value) setAllDetails(JSON.parse(res.value));
+    }).catch(() => {});
+  }, []);
+
+  const saveItemDetails = async (catKey, itemName, form) => {
+    const key = `${catKey}:${itemName}`;
+    const updated = { ...allDetails, [key]: form };
+    setAllDetails(updated);
+    try { await storage.set(ITEM_DETAILS_KEY, JSON.stringify(updated)); } catch (_) {}
+  };
+
+  const getItemDetails = (catKey, itemName) => allDetails[`${catKey}:${itemName}`] || null;
+
+  // Ako je odabrana stavka — prikaži detalje
+  if (selectedItem) {
+    const cat_ = cats.find(c => c.key === selectedItem.catKey);
+    return (
+      <ItemDetailScreen
+        item={selectedItem.name}
+        catLabel={cat_?.label || selectedItem.catKey}
+        catIcon={cat_?.icon || "📋"}
+        onBack={() => setSelectedItem(null)}
+        details={getItemDetails(selectedItem.catKey, selectedItem.name)}
+        onSave={(form) => saveItemDetails(selectedItem.catKey, selectedItem.name, form)}
+      />
+    );
+  }
 
   const cat = cats.find(c => c.key === tab) || cats[0];
   const items = allData[tab] || [];
@@ -761,7 +870,9 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
               {search ? "Nema rezultata." : "Baza je prazna — dodaj prvi unos gore."}
             </div>
           )}
-          {filtered.map((item, i) => (
+          {filtered.map((item, i) => {
+            const hasDetails = !!(allDetails[`${tab}:${item}`] && Object.values(allDetails[`${tab}:${item}`]).some(v => v));
+            return (
             <div key={item} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none" }}>
               {editItem === item ? (
                 /* Inline edit mode */
@@ -779,7 +890,13 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
               ) : (
                 /* Normal mode */
                 <>
-                  <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500, flex: 1 }}>{item}</span>
+                  <button onClick={() => setSelectedItem({ name: item, catKey: tab })} style={{
+                    background: "none", border: "none", textAlign: "left", cursor: "pointer",
+                    flex: 1, display: "flex", alignItems: "center", gap: 8, padding: 0
+                  }}>
+                    <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{item}</span>
+                    {hasDetails && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#3b82f6", display: "inline-block", flexShrink: 0 }} />}
+                  </button>
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={() => startEdit(item)} style={{ background: "#f8fafc", border: "1.5px solid #e2e8f0", color: "#64748b", borderRadius: 8, padding: "5px 10px", fontSize: 13, cursor: "pointer" }}>✏️</button>
                     <button onClick={() => setConfirmDelete(item)} style={{ background: "#fef2f2", border: "none", color: "#ef4444", borderRadius: 8, padding: "5px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>🗑</button>
@@ -787,7 +904,8 @@ function BazaScreen({ allData, onUpdate, onBack, cats, isAdmin, onAddCategory, o
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
         <div style={{ textAlign: "center", fontSize: 12, color: "#cbd5e1", marginTop: 12 }}>Ukupno: {items.length}</div>
       </div>
