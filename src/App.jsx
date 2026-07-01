@@ -1961,7 +1961,286 @@ function LoginScreen({ onLogin }) {
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
+// ── PublicScheduleView — read-only prikaz rasporeda (danas/sutra) ─────────────
+function PublicScheduleView({ onBack }) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [sites, setSites] = useState(null);
+  const [cats, setCats] = useState(DEFAULT_CATS);
+  const [loading, setLoading] = useState(true);
+
+  const dateLabel = (d) => new Date(d + "T12:00:00").toLocaleDateString("hr-HR", { weekday: "long", day: "numeric", month: "long" });
+
+  useEffect(() => {
+    storage.get(CATS_KEY).then(res => {
+      if (res?.value) { const c = JSON.parse(res.value); if (Array.isArray(c) && c.length) setCats(c); }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    storage.get(`raspored-day-${selectedDate}`).then(res => {
+      if (res?.value) setSites(JSON.parse(res.value).sites || []);
+      else setSites([]);
+      setLoading(false);
+    }).catch(() => { setSites([]); setLoading(false); });
+  }, [selectedDate]);
+
+  const regularSites = (sites || []).filter(s => !s.permanent && cats.some(c => (s[c.key] || []).length > 0));
+  const permanentSites = (sites || []).filter(s => s.permanent);
+  const rightCats = cats.filter(c => c.key !== "workers");
+
+  return (
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <MiniLogo size={30} />
+          <div style={{ fontSize: 18, fontWeight: 800 }}>📅 Raspored</div>
+        </div>
+        {/* Danas / Sutra tabs */}
+        <div style={{ display: "flex", gap: 4 }}>
+          {[todayStr, tomorrowStr].map((d, i) => (
+            <button key={d} onClick={() => setSelectedDate(d)} style={{
+              flex: 1, padding: "10px 0", border: "none", borderRadius: "10px 10px 0 0",
+              fontSize: 13, fontWeight: 700, cursor: "pointer",
+              background: selectedDate === d ? "#fff" : "rgba(255,255,255,0.2)",
+              color: selectedDate === d ? "#C73E3E" : "#fff"
+            }}>{i === 0 ? "Danas" : "Sutra"}</button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ padding: 16 }}>
+        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 14, textTransform: "capitalize", fontWeight: 600 }}>{dateLabel(selectedDate)}</div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
+        ) : regularSites.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Nema rasporeda za ovaj dan.</div>
+        ) : (
+          <>
+            {regularSites.map(site => (
+              <div key={site.id} style={{ background: "#fff", borderRadius: 12, padding: 14, marginBottom: 10, boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "#1e293b", textTransform: "uppercase", borderBottom: "2px solid #1e293b", paddingBottom: 6, marginBottom: 10 }}>{site.name}</div>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {/* Radnici */}
+                  <div style={{ flex: 2 }}>
+                    {(site.workers || []).map(w => (
+                      <div key={w} style={{ fontSize: 13, color: "#1e293b", padding: "3px 0", borderBottom: "1px dotted #f1f5f9" }}>{w}</div>
+                    ))}
+                    {!(site.workers?.length) && <div style={{ fontSize: 12, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
+                  </div>
+                  {/* Oprema */}
+                  <div style={{ flex: 1, borderLeft: "1px solid #f1f5f9", paddingLeft: 10 }}>
+                    {rightCats.flatMap(c => site[c.key] || []).map(v => (
+                      <div key={v} style={{ fontSize: 12, color: "#64748b", padding: "3px 0", borderBottom: "1px dotted #f1f5f9" }}>{v}</div>
+                    ))}
+                    {rightCats.every(c => !(site[c.key]?.length)) && <div style={{ fontSize: 12, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Komin / Fali */}
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              {permanentSites.map(site => (
+                <div key={site.id} style={{
+                  flex: 1, background: "#fff", borderRadius: 12, padding: 12,
+                  border: site.name === "Fali" ? "2px solid #1e293b" : "1px solid #f1f5f9",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
+                }}>
+                  <div style={{ fontWeight: 800, fontSize: 13, color: "#1e293b", borderBottom: "2px solid #1e293b", paddingBottom: 4, marginBottom: 8, textTransform: "uppercase" }}>{site.name}</div>
+                  {(site.workers || []).map(w => <div key={w} style={{ fontSize: 12, color: "#1e293b", padding: "2px 0" }}>{w}</div>)}
+                  {!(site.workers?.length) && <div style={{ fontSize: 11, color: "#cbd5e1", fontStyle: "italic" }}>—</div>}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PublicHoursView — read-only prikaz radnih sati ────────────────────────────
+function PublicHoursView({ onBack }) {
+  const today_ = new Date();
+  const [yearMonth, setYearMonth] = useState(
+    `${today_.getFullYear()}-${String(today_.getMonth() + 1).padStart(2, "0")}`
+  );
+  const [hoursData, setHoursData] = useState(null);
+  const [allWorkers, setAllWorkers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedWorker, setSelectedWorker] = useState(null);
+
+  const [y, m] = yearMonth.split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const monthLabel = new Date(y, m - 1, 1).toLocaleDateString("hr-HR", { month: "long", year: "numeric" });
+
+  useEffect(() => {
+    storage.get(BAZA_KEY).then(res => {
+      if (res?.value) setAllWorkers(JSON.parse(res.value).workers || []);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    storage.get(hoursKey(yearMonth)).then(res => {
+      setHoursData(res?.value ? JSON.parse(res.value) : {});
+      setLoading(false);
+    }).catch(() => { setHoursData({}); setLoading(false); });
+  }, [yearMonth]);
+
+  const getMonthTotal = (w) => {
+    if (!hoursData || !hoursData[w]) return 0;
+    return Object.values(hoursData[w]).reduce((a, h) => a + (Number(h) || 0), 0);
+  };
+
+  const changeMonth = (delta) => {
+    const d = new Date(y, m - 1 + delta, 1);
+    setYearMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const sorted = [...allWorkers].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
+
+  if (selectedWorker) {
+    const dayLabel = (day) => new Date(y, m - 1, day).toLocaleDateString("hr-HR", { weekday: "short" });
+    const isWeekend = (day) => { const d = new Date(y, m - 1, day).getDay(); return d === 0 || d === 6; };
+    return (
+      <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+        <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px", color: "#fff" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setSelectedWorker(null)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+            <div>
+              <div style={{ fontSize: 11, opacity: 0.8, textTransform: "uppercase", letterSpacing: 1 }}>{monthLabel}</div>
+              <div style={{ fontSize: 18, fontWeight: 800 }}>{selectedWorker}</div>
+            </div>
+            <div style={{ marginLeft: "auto", background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "8px 14px", fontWeight: 800, fontSize: 18 }}>
+              {getMonthTotal(selectedWorker)}h
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: 16 }}>
+          <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
+              const hours = hoursData?.[selectedWorker]?.[day];
+              const weekend = isWeekend(day);
+              return (
+                <div key={day} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "11px 16px", borderBottom: day < daysInMonth ? "1px solid #f1f5f9" : "none",
+                  background: weekend ? "#f8fafc" : "#fff"
+                }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: weekend ? "#cbd5e1" : "#1e293b", minWidth: 24 }}>{day}.</span>
+                    <span style={{ fontSize: 12, color: "#94a3b8", textTransform: "capitalize" }}>{dayLabel(day)}</span>
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: hours > 0 ? "#1e293b" : "#cbd5e1" }}>
+                    {hours !== undefined ? `${hours}h` : "—"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ background: "var(--ui-gradient, linear-gradient(135deg, #C73E3E 0%, #DF5050 100%))", padding: "20px 16px 0", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <button onClick={onBack} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "6px 12px", fontSize: 14, cursor: "pointer", fontWeight: 600 }}>← Natrag</button>
+          <MiniLogo size={30} />
+          <div style={{ fontSize: 18, fontWeight: 800 }}>⏱️ Radni sati</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 16 }}>
+          <button onClick={() => changeMonth(-1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>‹</button>
+          <div style={{ fontSize: 15, fontWeight: 700, textTransform: "capitalize" }}>{monthLabel}</div>
+          <button onClick={() => changeMonth(1)} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", borderRadius: 8, padding: "8px 14px", fontSize: 18, cursor: "pointer" }}>›</button>
+        </div>
+      </div>
+      <div style={{ padding: 16 }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
+        ) : (
+          <div style={{ background: "#fff", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 6px rgba(0,0,0,0.07)" }}>
+            {sorted.map((w, i) => {
+              const total = getMonthTotal(w);
+              return (
+                <button key={w} onClick={() => setSelectedWorker(w)} style={{
+                  display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between",
+                  padding: "14px 16px", border: "none", background: "none", cursor: "pointer",
+                  borderBottom: i < sorted.length - 1 ? "1px solid #f1f5f9" : "none", textAlign: "left"
+                }}>
+                  <span style={{ fontSize: 15, color: "#1e293b", fontWeight: 500 }}>{w}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: total > 0 ? "#C73E3E" : "#cbd5e1" }}>{total}h</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── PublicApp — javni read-only način ─────────────────────────────────────────
+function PublicApp() {
+  const [screen, setScreen] = useState("landing");
+
+  // Primijeni defaultne boje
+  useEffect(() => {
+    const r = document.documentElement;
+    r.style.setProperty("--ui-color", DEFAULT_UI_COLOR);
+    r.style.setProperty("--ui-gradient", `linear-gradient(135deg, ${DEFAULT_UI_COLOR}CC 0%, ${DEFAULT_UI_COLOR} 100%)`);
+    r.style.setProperty("--ui-gradient-btn", `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`);
+  }, []);
+
+  if (screen === "raspored") return <PublicScheduleView onBack={() => setScreen("landing")} />;
+  if (screen === "sati") return <PublicHoursView onBack={() => setScreen("landing")} />;
+
+  const cardStyle = {
+    border: "none", cursor: "pointer", display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center", borderRadius: 28, padding: "28px 12px",
+    boxShadow: `0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`,
+    background: `linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%)`,
+    flex: 1,
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#fff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div style={{ textAlign: "center", marginBottom: 36 }}>
+        {LOGO_URL ? (
+          <img src={LOGO_URL} alt="Gradprom" style={{ height: 80, objectFit: "contain", filter: "drop-shadow(0 3px 8px rgba(0,0,0,0.18))" }} />
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: DEFAULT_UI_COLOR, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, margin: "0 auto", color: "#fff" }}>🏗️</div>
+        )}
+        <div style={{ fontSize: 18, fontWeight: 800, marginTop: 12, color: "#1e293b" }}>GRAĐPROM sustav</div>
+        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Prikaz samo za čitanje</div>
+      </div>
+      <div style={{ display: "flex", gap: 14, width: "100%", maxWidth: 340 }}>
+        <button onClick={() => setScreen("sati")} style={cardStyle}>
+          <span style={{ fontSize: 32, marginBottom: 10 }}>⏱️</span>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Radni sati</div>
+        </button>
+        <button onClick={() => setScreen("raspored")} style={cardStyle}>
+          <span style={{ fontSize: 32, marginBottom: 10 }}>📅</span>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Raspored</div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  // ── Javni "read-only" način — URL parametar ?view=public ──
+  const isPublicMode = new URLSearchParams(window.location.search).get("view") === "public";
+  if (isPublicMode) return <PublicApp />;
+
   const [user, setUser] = useState(null);
   const [settings, saveSettings] = useSettings();
   const [userColors, saveColors] = useColors();
