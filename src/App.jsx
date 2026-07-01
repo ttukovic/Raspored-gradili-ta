@@ -1965,23 +1965,19 @@ function LoginScreen({ onLogin }) {
 // ── Main App ──────────────────────────────────────────────────────────────────
 // ── RadionicaScreen ───────────────────────────────────────────────────────────
 function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) {
-  const [view, setView] = useState("pregled"); // "pregled" | "servis"
+  const [view, setView] = useState("pregled"); // "pregled" | "zadaci"
+  const [selectedCat, setSelectedCat] = useState(null); // odabrana kategorija (bez radnika)
   const [selectedItem, setSelectedItem] = useState(null); // { key, name, catKey, catLabel, catIcon }
-  const [servisData, setServisData] = useState({}); // { "catKey:name": [...unosi] }
-  const [tasks, setTasks] = useState([]); // planirani zadaci idućih 14 dana
+  const [servisData, setServisData] = useState({});
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddServis, setShowAddServis] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
   const [newTask, setNewTask] = useState({ datum: "", opis: "", itemKey: "" });
 
-  // Sve stavke koje imaju smisla za radionicu (sve kategorije)
-  const allItems = cats.flatMap(cat =>
-    (allData[cat.key] || []).map(name => ({
-      key: `${cat.key}:${name}`, name, catKey: cat.key,
-      catLabel: cat.label, catIcon: cat.icon
-    }))
-  ).sort((a, b) => a.name.localeCompare(b.name, "hr", { numeric: true, sensitivity: "base" }));
+  // Kategorije bez radnika
+  const radionicaCats = cats.filter(c => c.key !== "workers");
 
   useEffect(() => {
     setLoading(true);
@@ -2200,47 +2196,73 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
         {loading ? (
           <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Učitavanje...</div>
         ) : view === "pregled" ? (
-          /* Vozila i strojevi */
+          /* Landing s oblačićima kategorija, pa lista kad odabereš */
           <>
-            {cats.map(cat => {
-              const items = allData[cat.key] || [];
-              if (items.length === 0) return null;
-              return (
-                <div key={cat.key} style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-                    {cat.icon} {cat.label}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {[...items].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name => {
-                      const key = `${cat.key}:${name}`;
-                      const last = getLastServis(key);
-                      const total = getTotalCost(key);
-                      const count = (servisData[key] || []).length;
-                      return (
-                        <button key={name} onClick={() => setSelectedItem({ key, name, catKey: cat.key, catLabel: cat.label, catIcon: cat.icon })} style={{
-                          background: "#fff", border: "1.5px solid #f1f5f9", borderRadius: 12,
-                          padding: "12px 14px", cursor: "pointer", textAlign: "left",
-                          display: "flex", justifyContent: "space-between", alignItems: "center",
-                          boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
-                        }}>
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{name}</div>
-                            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
-                              {last ? `Zadnji: ${formatDate(last.datum)} · ${last.opis}` : "Nema servisnih unosa"}
-                            </div>
+            {!selectedCat ? (
+              /* Oblačići kategorija */
+              <div style={{ padding: "8px 0" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
+                  {radionicaCats.map(cat => {
+                    const items = allData[cat.key] || [];
+                    const totalEntries = items.reduce((a, name) => a + (servisData[`${cat.key}:${name}`] || []).length, 0);
+                    return (
+                      <button key={cat.key} onClick={() => setSelectedCat(cat)} style={{
+                        background: "var(--ui-gradient-btn, linear-gradient(180deg, #EF6B6B 0%, #DF5050 55%, #C73E3E 100%))",
+                        border: "none", borderRadius: 28, padding: "28px 16px",
+                        width: "calc(50% - 6px)", cursor: "pointer", textAlign: "center",
+                        boxShadow: "0 8px 24px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)",
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10
+                      }}>
+                        <span style={{ fontSize: 36 }}>{cat.icon}</span>
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>{cat.label}</div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.8)", marginTop: 2 }}>
+                            {items.length} stavki{totalEntries > 0 ? ` · ${totalEntries} servisnih unosa` : ""}
                           </div>
-                          <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
-                            {count > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: "#C73E3E" }}>{count}× servis</div>}
-                            {total > 0 && <div style={{ fontSize: 11, color: "#94a3b8" }}>€{total.toLocaleString("hr-HR")}</div>}
-                            <div style={{ fontSize: 18, color: "#cbd5e1" }}>›</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            ) : (
+              /* Lista vozila/strojeva unutar odabrane kategorije */
+              <>
+                <button onClick={() => setSelectedCat(null)} style={{
+                  background: "#f1f5f9", border: "none", borderRadius: 10,
+                  padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#64748b",
+                  cursor: "pointer", marginBottom: 14, display: "inline-flex", alignItems: "center", gap: 6
+                }}>← {selectedCat.label}</button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {[...(allData[selectedCat.key] || [])].sort((a,b) => a.localeCompare(b,"hr",{numeric:true,sensitivity:"base"})).map(name => {
+                    const key = `${selectedCat.key}:${name}`;
+                    const last = getLastServis(key);
+                    const total = getTotalCost(key);
+                    const count = (servisData[key] || []).length;
+                    return (
+                      <button key={name} onClick={() => setSelectedItem({ key, name, catKey: selectedCat.key, catLabel: selectedCat.label, catIcon: selectedCat.icon })} style={{
+                        background: "#fff", border: "1.5px solid #f1f5f9", borderRadius: 12,
+                        padding: "12px 14px", cursor: "pointer", textAlign: "left",
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.05)"
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{name}</div>
+                          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+                            {last ? `Zadnji: ${formatDate(last.datum)} · ${last.opis}` : "Nema servisnih unosa"}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 10 }}>
+                          {count > 0 && <div style={{ fontSize: 12, fontWeight: 700, color: "#C73E3E" }}>{count}× servis</div>}
+                          {total > 0 && <div style={{ fontSize: 11, color: "#94a3b8" }}>€{total.toLocaleString("hr-HR")}</div>}
+                          <div style={{ fontSize: 18, color: "#cbd5e1" }}>›</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </>
         ) : (
           /* Zadaci za 14 dana */
