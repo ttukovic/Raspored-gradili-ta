@@ -1240,6 +1240,15 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
       background: "#fff", boxShadow: "-4px 0 16px rgba(0,0,0,0.12)",
       zIndex: 500, display: "flex", flexDirection: "column"
     }}>
+      {/* Gumb za zatvaranje — lijevi rub, sredina visine */}
+      <button onClick={onToggle} style={{
+        position: "absolute", top: "50%", left: -28, transform: "translateY(-50%)",
+        background: "var(--ui-gradient, linear-gradient(135deg, #2563eb, #3b82f6))", color: "#fff",
+        border: "none", borderRadius: "8px 0 0 8px", padding: "20px 6px",
+        fontSize: 13, fontWeight: 700, cursor: "pointer", writingMode: "vertical-rl",
+        boxShadow: "-2px 0 8px rgba(0,0,0,0.15)", zIndex: 501,
+        letterSpacing: 1
+      }}>✕ zatvori</button>
       {/* Header / close */}
       <div style={{ padding: "12px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Brzi izbornik</span>
