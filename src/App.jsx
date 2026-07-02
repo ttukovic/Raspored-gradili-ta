@@ -1445,45 +1445,22 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
         <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>Što želite otvoriti?</div>
       </div>
 
-      {/* Kartice — ovisno o korisniku */}
-      {isRadionica ? (
-        /* Radionica korisnici — samo Sati i Radionica */
-        <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 340 }}>
-          <button onClick={() => onSelect("sati")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
-          </button>
-          <button onClick={() => onSelect("raspored_view")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1, opacity: 0.85 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.8)", marginTop: 4 }}>samo pregled</div>
-          </button>
-          <button onClick={() => onSelect("radionica")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
-          </button>
-        </div>
-      ) : (
-        /* Normalni i admin korisnici — sve tri kartice */
-        <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 500 }}>
-          <button onClick={() => onSelect("sati")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
-          </button>
-          <button onClick={() => onSelect("raspored")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
-          </button>
-          <button onClick={() => onSelect("radionica")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
-          </button>
-        </div>
-      )}
-
-      {/* Samo pregled link */}
-      <a href="/?view=public" style={{
-        marginTop: 20, fontSize: 12, color: "#94a3b8", textDecoration: "none",
-        padding: "6px 14px", borderRadius: 8, border: "1px solid #e2e8f0",
-        display: "inline-block"
-      }}>Samo pregled (javni prikaz)</a>
+      {/* Kartice */}
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", justifyContent: "center", width: "100%", maxWidth: 500 }}>
+        <button onClick={() => onSelect("sati")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radni sati</div>
+        </button>
+        <button onClick={() => onSelect(isRadionica ? "raspored_view" : "raspored")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Raspored</div>
+          {isRadionica && <div style={{ fontSize: 10, color: "rgba(255,255,255,0.75)", marginTop: 4 }}>samo pregled</div>}
+        </button>
+        <button onClick={() => onSelect("radionica")} style={{ ...cardBase, borderRadius: 28, padding: "28px 12px", flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", textAlign: "center" }}>Radionica</div>
+        </button>
+      </div>
 
       <button onClick={onLogout} style={{
-        marginTop: 12, background: "#f1f5f9", border: "none", borderRadius: 12,
+        marginTop: 32, background: "#f1f5f9", border: "none", borderRadius: 12,
         padding: "10px 28px", cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
       }}>&#8592; Odjava</button>
     </div>
@@ -1491,7 +1468,7 @@ function LandingScreen({ onSelect, user, onLogout, settings, onSaveSettings, cat
 }
 
 // ── HoursScreen ───────────────────────────────────────────────────────────────
-function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
+function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn, readOnly }) {
   const today_ = new Date();
   const [yearMonth, setYearMonth] = useState(
     `${today_.getFullYear()}-${String(today_.getMonth() + 1).padStart(2, "0")}`
@@ -1587,6 +1564,7 @@ function HoursScreen({ user, allWorkers, sites, onBack, settingsBtn }) {
   };
 
   const openEdit = (worker, day) => {
+    if (readOnly) return;
     const current = getDayHours(worker, day);
     setEditValue(current !== null ? String(current) : String(STANDARD_DAILY_HOURS));
     setEditModal({ worker, day });
@@ -1975,16 +1953,9 @@ function LoginScreen({ onLogin }) {
       <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 360, boxShadow: "0 8px 40px rgba(0,0,0,0.1)", border: "1px solid #f1f5f9" }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           {LOGO_URL ? (
-            <img src={LOGO_URL} alt="Gradprom" style={{
-              height: 70, marginBottom: 8, objectFit: "contain",
-              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.15))"
-            }} />
+            <img src={LOGO_URL} alt="Gradprom" style={{ height: 70, marginBottom: 8, objectFit: "contain", filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.15))" }} />
           ) : (
-            <div style={{
-              width: 56, height: 56, borderRadius: 14, background: BRAND_RED,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 26, margin: "0 auto 8px", color: "#fff"
-            }}></div>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, margin: "0 auto 8px", color: "#fff" }}></div>
           )}
           <p style={{ margin: "4px 0 0", color: "#94a3b8", fontSize: 14 }}>Upiši PIN za nastavak</p>
         </div>
@@ -1994,12 +1965,14 @@ function LoginScreen({ onLogin }) {
         {error && <p style={{ color: "#ef4444", fontSize: 13, margin: "4px 0 10px", textAlign: "center" }}>{error}</p>}
         <button onClick={handleLogin} style={{
           width: "100%", padding: "15px 0",
-          background: `var(--ui-gradient-btn, var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%)))`,
+          background: `var(--ui-gradient-btn, linear-gradient(180deg, #60a5fa 0%, #3b82f6 55%, #2563eb 100%))`,
           border: "none", color: "#fff",
           borderRadius: 14, fontSize: 16, fontWeight: 800, cursor: "pointer", marginTop: 8,
-          boxShadow: `0 8px 20px #DF505030, inset 0 1px 0 rgba(255,255,255,0.35)`
+          boxShadow: `0 4px 16px rgba(37,99,235,0.3)`
         }}>Prijavi se</button>
-        <p style={{ textAlign: "center", fontSize: 12, color: "#cbd5e1", marginTop: 16, marginBottom: 0 }}>Kontaktiraj admina za PIN pristup.</p>
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <a href="/?view=public" style={{ fontSize: 13, color: "#94a3b8", textDecoration: "none", padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", display: "inline-block" }}>Samo pregled</a>
+        </div>
       </div>
     </div>
   );
@@ -3141,7 +3114,7 @@ export default function App() {
 
   if (screen === "sati") return (
     <div style={{ fontSize: appFont }}>
-      <HoursScreen user={user} allWorkers={allData.workers || []} sites={sites || []} onBack={() => setScreen("landing")} settingsBtn={settingsBtn} />
+      <HoursScreen user={user} allWorkers={allData.workers || []} sites={sites || []} onBack={() => setScreen("landing")} settingsBtn={settingsBtn} readOnly={user.radionica && !user.admin} />
     </div>
   );
 
