@@ -1971,7 +1971,7 @@ function LoginScreen({ onLogin }) {
           boxShadow: `0 4px 16px rgba(37,99,235,0.3)`
         }}>Prijavi se</button>
         <div style={{ textAlign: "center", marginTop: 16 }}>
-          <a href="/?view=public" style={{ fontSize: 13, color: "#94a3b8", textDecoration: "none", padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", display: "inline-block" }}>Samo pregled</a>
+          <button onClick={() => { window.history.pushState({}, "", "/?view=public"); window.location.reload(); }} style={{ fontSize: 13, color: "#94a3b8", background: "none", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }}>Samo pregled</button>
         </div>
       </div>
     </div>
