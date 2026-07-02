@@ -2692,14 +2692,16 @@ function PublicApp() {
       </div>
       <div style={{ display: "flex", gap: 14, width: "100%", maxWidth: 340 }}>
         <button onClick={() => setScreen("sati")} style={cardStyle}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Radni sati</div>
         </button>
         <button onClick={() => setScreen("raspored")} style={cardStyle}>
-          <span style={{ fontSize: 32, marginBottom: 10 }}></span>
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>Raspored</div>
         </button>
       </div>
+      <button onClick={() => { window.history.pushState({}, "", "/"); window.location.reload(); }} style={{
+        marginTop: 20, background: "#f1f5f9", border: "none", borderRadius: 12,
+        padding: "10px 28px", cursor: "pointer", color: "#64748b", fontSize: 13, fontWeight: 600
+      }}>Prijava</button>
     </div>
   );
 }
