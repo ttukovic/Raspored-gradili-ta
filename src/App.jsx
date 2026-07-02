@@ -66,6 +66,7 @@ const BAZA_KEY = `raspored-baza-v2`;
 const ITEM_DETAILS_KEY = `raspored-item-details`; // detalji o vozilima/strojevima/svim stavkama
 const RADIONICA_KEY = `gradprom-radionica`;
 const RADIONICA_TASKS_KEY = `gradprom-radionica-tasks`;
+const KVAR_KEY = `gradprom-kvar`; // aktivni kvarovi: { "catKey:itemName": { opis, datum } }
 const RADIONICA_CATS_KEY = `gradprom-radionica-cats`; // extra kategorije samo za radionicu
 const ACTIVITY_LOG_KEY = `raspored-activity-log`;
 const hoursKey = (yearMonth) => `raspored-hours-${yearMonth}`; // npr. "2026-06"
@@ -489,7 +490,7 @@ function NoteModal({ worker, siteId, siteName, date, note, onSave, onClose, isVe
 }
 
 // ── BottomSheet ───────────────────────────────────────────────────────────────
-function BottomSheet({ title, options, onAdd, onClose }) {
+function BottomSheet({ title, options, onAdd, onClose, kvarovi, catKey }) {
   const [search, setSearch] = useState("");
   const [highlighted, setHighlighted] = useState(0);
   const sorted = [...options].sort((a, b) => a.localeCompare(b, "hr", { numeric: true, sensitivity: "base" }));
@@ -497,7 +498,6 @@ function BottomSheet({ title, options, onAdd, onClose }) {
   const showAddNew = filtered.length === 0 && search;
   const listLength = showAddNew ? 1 : filtered.length;
 
-  // Reset highlight when search changes
   useEffect(() => { setHighlighted(0); }, [search]);
 
   const handleKeyDown = (e) => {
@@ -510,7 +510,11 @@ function BottomSheet({ title, options, onAdd, onClose }) {
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (showAddNew) { onAdd(search); onClose(); }
-      else if (filtered[highlighted]) { onAdd(filtered[highlighted]); onClose(); }
+      else if (filtered[highlighted]) {
+        const itemKey = `${catKey}:${filtered[highlighted]}`;
+        if (kvarovi && kvarovi[itemKey]) return; // blokirano
+        onAdd(filtered[highlighted]); onClose();
+      }
     } else if (e.key === "Escape") {
       onClose();
     }
@@ -536,15 +540,30 @@ function BottomSheet({ title, options, onAdd, onClose }) {
               color: "#f97316", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 6
             }}>+ Dodaj "{search}" kao novo</button>
           )}
-          {filtered.map((opt, i) => (
-            <button key={opt} onClick={() => { onAdd(opt); onClose(); }}
-              onMouseEnter={() => setHighlighted(i)} style={{
-              display: "block", width: "100%", textAlign: "left", padding: "12px 14px",
-              border: "none", borderBottom: "1px solid #f1f5f9",
-              background: highlighted === i ? "#eff6ff" : "none",
-              fontSize: 14, cursor: "pointer", color: "#1e293b"
-            }}>{opt}</button>
-          ))}
+          {filtered.map((opt, i) => {
+            const itemKey = `${catKey}:${opt}`;
+            const hasKvar = !!(kvarovi && kvarovi[itemKey]);
+            return (
+              <button key={opt}
+                onClick={() => { if (hasKvar) return; onAdd(opt); onClose(); }}
+                onMouseEnter={() => !hasKvar && setHighlighted(i)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  width: "100%", textAlign: "left", padding: "12px 14px",
+                  border: "none", borderBottom: "1px solid #f1f5f9",
+                  background: hasKvar ? "#fef2f2" : highlighted === i ? "#eff6ff" : "none",
+                  fontSize: 14, cursor: hasKvar ? "not-allowed" : "pointer",
+                  color: hasKvar ? "#ef4444" : "#1e293b", boxSizing: "border-box"
+                }}>
+                <span>{opt}</span>
+                {hasKvar && (
+                  <span style={{ fontSize: 11, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 5, padding: "2px 7px", flexShrink: 0 }}>
+                    ! Kvar
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -552,7 +571,7 @@ function BottomSheet({ title, options, onAdd, onClose }) {
 }
 
 // ── SiteCard ──────────────────────────────────────────────────────────────────
-function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats, userColors, itemDetails, currentDate }) {
+function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelete, readOnly, dragItem, onDragStartItem, onDragEndItem, onDropItem, cats, userColors, itemDetails, currentDate, kvarovi }) {
   const [modal, setModal] = useState(null);
   const [dragOverCat, setDragOverCat] = useState(null);
   const [noteModal, setNoteModal] = useState(null);
@@ -674,6 +693,8 @@ function SiteCard({ site, allSites, allData, duplicateWorkers, onUpdate, onDelet
       {modal && (
         <BottomSheet
           title={`Dodaj ${cats.find(c => c.key === modal)?.label.toLowerCase().replace(/i$/, "")}`}
+          catKey={modal}
+          kvarovi={kvarovi}
           options={(allData[modal] || []).filter(v => {
               if ((site[modal] || []).includes(v)) return false;
               const usedElsewhere = allSites.some(s => s.id !== site.id && (s[modal] || []).includes(v));
@@ -1213,7 +1234,7 @@ function PrintModal({ sites, date, onClose, cats }) {
 }
 
 // ── SidebarPalette ────────────────────────────────────────────────────────────
-function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem, cats, userColors }) {
+function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onDragEndItem, dragItem, cats, userColors, kvarovi }) {
   const [activeCat, setActiveCat] = useState("workers");
   const [search, setSearch] = useState("");
 
@@ -1286,23 +1307,33 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
             {search ? "Nema rezultata" : "Sve je raspoređeno"}
           </div>
         )}
-        {available.map(val => (
-          <div
-            key={val}
-            draggable
-            onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; onDragStartItem("sidebar", activeCat, val); }}
-            onDragEnd={onDragEndItem}
-            style={{
-              background: cat.bg, border: `1.5px solid ${cat.border}`, borderRadius: 6,
-              padding: "6px 8px", marginBottom: 4, fontSize: 12, fontWeight: 600,
-              color: cat.color, cursor: "grab", whiteSpace: "nowrap", overflow: "hidden",
-              textOverflow: "ellipsis",
-              opacity: dragItem && dragItem.siteId === "sidebar" && dragItem.value === val ? 0.4 : 1
-            }}
-          >
-            {val}
-          </div>
-        ))}
+        {available.map(val => {
+          const itemKey = `${activeCat}:${val}`;
+          const hasKvar = !!(kvarovi && kvarovi[itemKey]);
+          return (
+            <div
+              key={val}
+              draggable={!hasKvar}
+              onDragStart={hasKvar ? undefined : (e) => { e.dataTransfer.effectAllowed = "move"; onDragStartItem("sidebar", activeCat, val); }}
+              onDragEnd={hasKvar ? undefined : onDragEndItem}
+              title={hasKvar ? `KVAR: ${kvarovi[itemKey].opis}` : undefined}
+              style={{
+                background: hasKvar ? "#fef2f2" : cat.bg,
+                border: `1.5px solid ${hasKvar ? "#fca5a5" : cat.border}`,
+                borderRadius: 6,
+                padding: "6px 8px", marginBottom: 4, fontSize: 12, fontWeight: 600,
+                color: hasKvar ? "#ef4444" : cat.color,
+                cursor: hasKvar ? "not-allowed" : "grab",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                opacity: dragItem && dragItem.siteId === "sidebar" && dragItem.value === val ? 0.4 : 1,
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4
+              }}
+            >
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{val}</span>
+              {hasKvar && <span style={{ flexShrink: 0, fontWeight: 800, fontSize: 13 }}>!</span>}
+            </div>
+          );
+        })}
       </div>
 
       <div style={{ padding: "8px 10px", borderTop: "1px solid #f1f5f9", fontSize: 10, color: "#cbd5e1", textAlign: "center" }}>
@@ -2003,7 +2034,8 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
   const [showAddServis, setShowAddServis] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [showAddCat, setShowAddCat] = useState(false);
-  const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
+  const [newServis, setNewServis] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "", kvar: false });
+  const [kvarovi, setKvarovi] = useState({});
   const [newTask, setNewTask] = useState({ datum: new Date().toISOString().slice(0,10), opis: "", itemKey: "" });
   const [newCat, setNewCat] = useState({ label: "", icon: "" });
   const [newItemName, setNewItemName] = useState("");
@@ -2020,7 +2052,8 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
       storage.get(RADIONICA_KEY).catch(() => null),
       storage.get(RADIONICA_TASKS_KEY).catch(() => null),
       storage.get(RADIONICA_CATS_KEY).catch(() => null),
-    ]).then(([sRes, tRes, cRes]) => {
+      storage.get(KVAR_KEY).catch(() => null),
+    ]).then(([sRes, tRes, cRes, kRes]) => {
       if (sRes?.value) setServisData(JSON.parse(sRes.value));
       if (tRes?.value) setTasks(JSON.parse(tRes.value));
       if (cRes?.value) {
@@ -2028,6 +2061,7 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
         setExtraCats(saved.cats || []);
         setExtraData(saved.data || {});
       }
+      if (kRes?.value) setKvarovi(JSON.parse(kRes.value));
       setLoading(false);
     });
   }, []);
@@ -2070,6 +2104,17 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
     try { await storage.set(RADIONICA_KEY, JSON.stringify(newData)); } catch (_) {}
   };
 
+  const saveKvarovi = async (newKvarovi) => {
+    setKvarovi(newKvarovi);
+    try { await storage.set(KVAR_KEY, JSON.stringify(newKvarovi), true); } catch (_) {} // shared=true da raspored vidi
+  };
+
+  const resolveKvar = async (itemKey) => {
+    const updated = { ...kvarovi };
+    delete updated[itemKey];
+    await saveKvarovi(updated);
+  };
+
   const saveTasks = async (t) => {
     setTasks(t);
     try { await storage.set(RADIONICA_TASKS_KEY, JSON.stringify(t)); } catch (_) {}
@@ -2085,11 +2130,16 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
       sati: newServis.sati ? Number(newServis.sati) : null,
       trosak: newServis.trosak ? Number(newServis.trosak) : null,
       mehanicар: user.name,
+      kvar: newServis.kvar || false,
     };
     const k = selectedItem.key;
     const updated = { ...servisData, [k]: [entry, ...(servisData[k] || [])] };
     await saveServis(updated);
-    setNewServis({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "" });
+    // Ako je kvar — spremi u kvarove
+    if (newServis.kvar) {
+      await saveKvarovi({ ...kvarovi, [k]: { opis: entry.opis, datum: entry.datum, mehanicар: entry.mehanicар } });
+    }
+    setNewServis({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "", kvar: false });
     setShowAddServis(false);
   };
 
@@ -2188,8 +2238,21 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                 <div style={{fontSize:18,fontWeight:800}}>{selectedItem.name}</div>
               </div>
             </div>
-            {settingsBtn}
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {kvarovi[selectedItem.key] && (
+                <button onClick={()=>resolveKvar(selectedItem.key)} style={{background:"#fff",border:"none",color:"#ef4444",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  ! Kvar riješen
+                </button>
+              )}
+              {settingsBtn}
+            </div>
           </div>
+          {kvarovi[selectedItem.key] && (
+            <div style={{background:"rgba(239,68,68,0.2)",borderRadius:10,padding:"8px 12px",marginTop:12,border:"1px solid rgba(239,68,68,0.4)"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#fff"}}>! AKTIVAN KVAR — vozilo blokirano za raspored</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.85)",marginTop:2}}>{kvarovi[selectedItem.key].opis}</div>
+            </div>
+          )}
           <div style={{display:"flex",gap:8,marginTop:14}}>
             {[["Servisnih unosa",entries.length],["Ukupno troškova","€"+getTotalCost(selectedItem.key).toLocaleString("hr-HR")],["Zadnji servis",entries[0]?formatDate(entries[0].datum):"—"]].map(([l,v])=>(
               <div key={l} style={{flex:1,background:"rgba(255,255,255,0.15)",borderRadius:10,padding:"8px 12px"}}>
@@ -2236,6 +2299,17 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
                     style={{width:"100%",boxSizing:"border-box",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px",fontSize:14,outline:"none"}}/>
                 </div>
               ))}
+              {/* Kvar checkbox */}
+              <div style={{marginBottom:16,background:"#fef2f2",borderRadius:10,padding:"12px 14px",border:"1.5px solid #fecaca"}}>
+                <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                  <input type="checkbox" checked={newServis.kvar} onChange={e=>setNewServis(f=>({...f,kvar:e.target.checked}))}
+                    style={{width:18,height:18,cursor:"pointer",accentColor:"#ef4444"}}/>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:700,color:"#ef4444"}}>! Prijavi kvar</div>
+                    <div style={{fontSize:11,color:"#94a3b8"}}>Vozilo/stroj neće biti dostupno za raspored dok se kvar ne riješi</div>
+                  </div>
+                </label>
+              </div>
               <button onClick={addServisEntry} style={{width:"100%",padding:"13px 0",background:"var(--ui-gradient-btn,linear-gradient(180deg,#60a5fa 0%,#3b82f6 55%,#2563eb 100%))",border:"none",color:"#fff",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",marginTop:8}}>Spremi unos</button>
             </div>
           </div>
@@ -2759,11 +2833,19 @@ export default function App() {
   });
   const [cats, setCats] = useState(DEFAULT_CATS);
   const [itemDetails, setItemDetails] = useState({});
+  const [kvarovi, setKvarovi] = useState({});
 
   useEffect(() => {
     storage.get(ITEM_DETAILS_KEY).then(res => {
       if (res?.value) setItemDetails(JSON.parse(res.value));
     }).catch(() => {});
+    // Učitaj kvarove i polliraj svakih 30s
+    const loadKvarovi = () => storage.get(KVAR_KEY).then(res => {
+      if (res?.value) setKvarovi(JSON.parse(res.value));
+    }).catch(() => {});
+    loadKvarovi();
+    const iv = setInterval(loadKvarovi, 30000);
+    return () => clearInterval(iv);
   }, []);
   const [loading, setLoading] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -3245,7 +3327,7 @@ export default function App() {
                   duplicateWorkers={duplicateWorkers} onUpdate={updateSite}
                   onDelete={() => deleteSite(site.id)} readOnly={readOnly}
                   dragItem={dragItem} onDragStartItem={handleDragStartItem}
-                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} userColors={userColors} itemDetails={itemDetails} currentDate={currentDate} />
+                  onDragEndItem={handleDragEndItem} onDropItem={handleDropItem} cats={cats} userColors={userColors} itemDetails={itemDetails} currentDate={currentDate} kvarovi={kvarovi} />
               ))}
           </div>
         )}
@@ -3261,6 +3343,7 @@ export default function App() {
           onDragEndItem={handleDragEndItem}
           cats={cats}
           userColors={userColors}
+          kvarovi={kvarovi}
         />
       )}
 
