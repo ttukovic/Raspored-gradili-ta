@@ -1252,7 +1252,7 @@ function SidebarPalette({ allData, sites, isOpen, onToggle, onDragStartItem, onD
       {/* Header / close */}
       <div style={{ padding: "12px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1 }}>Brzi izbornik</span>
-        <button onClick={onToggle} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 16, cursor: "pointer", padding: 2 }}></button>
+        <button onClick={onToggle} style={{ background: "none", border: "none", color: "#1e293b", fontSize: 18, cursor: "pointer", padding: 2, fontWeight: 700 }}>✕</button>
       </div>
 
       {/* Category tabs */}
