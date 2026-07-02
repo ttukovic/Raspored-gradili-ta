@@ -3161,7 +3161,7 @@ export default function App() {
   return (
     <div style={{ background: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', system-ui, sans-serif", fontSize: appFont }}>
       {/* Header */}
-      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", color: "#fff" }}>
+      <div style={{ background: "var(--ui-gradient, var(--ui-gradient, linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)))", padding: "20px 16px 0", paddingRight: sidebarOpen ? 216 : 16, color: "#fff", transition: "padding-right 0.2s" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
             <MiniLogo size={34} />
