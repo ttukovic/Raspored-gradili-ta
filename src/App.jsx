@@ -2660,11 +2660,11 @@ function PublicHoursView({ onBack }) {
 function PublicApp() {
   const [screen, setScreen] = useState("landing");
 
-  // Primijeni defaultne boje
   useEffect(() => {
     const r = document.documentElement;
-    r.style.setProperty("--ui-color", DEFAULT_UI_COLOR);
-    r.style.setProperty("--ui-gradient", `linear-gradient(135deg, ${DEFAULT_UI_COLOR}CC 0%, ${DEFAULT_UI_COLOR} 100%)`);
+    const ui = DEFAULT_UI_COLOR;
+    r.style.setProperty("--ui-color", ui);
+    r.style.setProperty("--ui-gradient", `linear-gradient(135deg, ${ui}CC 0%, ${ui} 100%)`);
     r.style.setProperty("--ui-gradient-btn", `linear-gradient(180deg, ${ui}DD 0%, ${ui} 55%, ${ui}BB 100%)`);
   }, []);
 
