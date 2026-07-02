@@ -185,8 +185,12 @@ function useSettings() {
 }
 
 function applyFontSize(size) {
-  const map = { small: "13px", normal: "15px", large: "18px" };
-  document.documentElement.style.fontSize = map[size] || "15px";
+  const scaleMap = { small: "0.87", normal: "1", large: "1.18" };
+  const scale = scaleMap[size] || "1";
+  document.documentElement.style.setProperty("--font-scale", scale);
+  // Postavi i direktno na root element kao fallback
+  const root = document.getElementById("root");
+  if (root) root.style.zoom = scale;
 }
 
 // Defaultne boje (koriste se ako korisnik nije promijenio)
