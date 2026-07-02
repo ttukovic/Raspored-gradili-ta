@@ -2110,6 +2110,12 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
   };
 
   const resolveKvar = async (itemKey) => {
+    const kvar = kvarovi[itemKey];
+    // Završi povezani kvar zadatak
+    if (kvar?.taskId) {
+      const updatedTasks = tasks.map(t => t.id === kvar.taskId ? { ...t, status: "done" } : t);
+      await saveTasks(updatedTasks);
+    }
     const updated = { ...kvarovi };
     delete updated[itemKey];
     await saveKvarovi(updated);
@@ -2135,9 +2141,26 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
     const k = selectedItem.key;
     const updated = { ...servisData, [k]: [entry, ...(servisData[k] || [])] };
     await saveServis(updated);
-    // Ako je kvar — spremi u kvarove
+
     if (newServis.kvar) {
-      await saveKvarovi({ ...kvarovi, [k]: { opis: entry.opis, datum: entry.datum, mehanicар: entry.mehanicар } });
+      // Kreiraj zadatak bez datuma — aktivan dok ga mehaničar ne riješi
+      const taskId = `kvar_${Date.now().toString()}`;
+      const kvarTask = {
+        id: taskId,
+        itemKey: k,
+        itemName: selectedItem.name,
+        catIcon: selectedItem.catIcon || "",
+        datum: null, // bez datuma — uvijek aktivan
+        opis: entry.opis,
+        status: "pending",
+        created: user.name,
+        priority: true,
+        kvar: true, // označen kao kvar zadatak
+      };
+      const newTasks = [...tasks, kvarTask];
+      await saveTasks(newTasks);
+      // Spremi kvar s referencom na task ID
+      await saveKvarovi({ ...kvarovi, [k]: { opis: entry.opis, datum: entry.datum, mehanicар: entry.mehanicар, taskId } });
     }
     setNewServis({ datum: new Date().toISOString().slice(0,10), opis: "", km: "", sati: "", trosak: "", kvar: false });
     setShowAddServis(false);
@@ -2171,9 +2194,10 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
 
   const today = new Date().toISOString().slice(0,10);
   const in14 = new Date(Date.now() + 14*86400000).toISOString().slice(0,10);
-  const overdueTasks = tasks.filter(t => t.datum < today && t.status === "pending").sort((a,b) => a.datum.localeCompare(b.datum));
-  const upcomingTasks = tasks.filter(t => t.datum >= today && t.datum <= in14).sort((a,b) => a.datum.localeCompare(b.datum));
-  const recentDone = tasks.filter(t => t.status !== "pending" && t.datum >= new Date(Date.now()-14*86400000).toISOString().slice(0,10)).sort((a,b) => b.datum.localeCompare(a.datum));
+  const kvarTasks = tasks.filter(t => t.kvar && t.datum === null && t.status === "pending");
+  const overdueTasks = tasks.filter(t => t.datum && t.datum < today && t.status === "pending").sort((a,b) => a.datum.localeCompare(b.datum));
+  const upcomingTasks = tasks.filter(t => t.datum && t.datum >= today && t.datum <= in14).sort((a,b) => a.datum.localeCompare(b.datum));
+  const recentDone = tasks.filter(t => t.status !== "pending" && (t.datum === null || t.datum >= new Date(Date.now()-14*86400000).toISOString().slice(0,10))).sort((a,b) => (b.datum||"").localeCompare(a.datum||""));
 
   const formatDate = (d) => new Date(d+"T12:00:00").toLocaleDateString("hr-HR",{day:"numeric",month:"numeric"});
   const daysUntil = (d) => Math.round((new Date(d+"T12:00:00")-new Date())/86400000);
@@ -2192,29 +2216,31 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
 
   const MiniTaskRow = ({ t, onDone, onSkip, onReset, onDelete }) => {
     const done = t.status==="done", skipped = t.status==="skipped";
-    const days = daysUntil(t.datum);
-    const overdue = t.datum < today && !done && !skipped;
+    const isKvar = t.kvar && t.datum === null;
+    const days = isKvar ? null : daysUntil(t.datum);
+    const overdue = !isKvar && t.datum < today && !done && !skipped;
+
+    const statusText = done?"✓":skipped?"✗":isKvar?"! Kvar":overdue?`${Math.abs(days)}d`:days===0?"Danas":days===1?"Sutra":`${days}d`;
+    const statusBg = done?"#dcfce7":skipped?"#f1f5f9":isKvar?"#fee2e2":overdue?"#fee2e2":days===0?"#fef9c3":"#eff6ff";
+    const statusColor = done?"#16a34a":skipped?"#94a3b8":isKvar?"#ef4444":overdue?"#ef4444":days===0?"#854d0e":"#3b82f6";
+
     return (
       <div style={{
-        background: done?"#f0fdf4":skipped?"#f8fafc":t.priority?"#fffbeb":overdue?"#fef2f2":"#f8fafc",
-        border:`1px solid ${done?"#bbf7d0":skipped?"#e2e8f0":t.priority?"#fde047":overdue?"#fecaca":"#e2e8f0"}`,
+        background: done?"#f0fdf4":skipped?"#f8fafc":isKvar?"#fef2f2":t.priority?"#fffbeb":overdue?"#fef2f2":"#f8fafc",
+        border:`1px solid ${done?"#bbf7d0":skipped?"#e2e8f0":isKvar?"#fca5a5":t.priority?"#fde047":overdue?"#fecaca":"#e2e8f0"}`,
         borderRadius:8, padding:"7px 8px", marginBottom:5, opacity:done||skipped?0.65:1
       }}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:4}}>
           <div style={{flex:1,minWidth:0}}>
             {t.itemName&&<div style={{fontSize:10,color:"#94a3b8",marginBottom:1}}>{t.itemName}</div>}
-            <div style={{fontSize:12,fontWeight:600,color:done||skipped?"#94a3b8":"#1e293b",textDecoration:done||skipped?"line-through":"none",wordBreak:"break-word"}}>{t.opis}</div>
+            <div style={{fontSize:12,fontWeight:600,color:done||skipped?"#94a3b8":isKvar?"#ef4444":"#1e293b",textDecoration:done||skipped?"line-through":"none",wordBreak:"break-word"}}>{t.opis}</div>
             <div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>
-              <span style={{
-                fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",
-                background:done?"#dcfce7":skipped?"#f1f5f9":overdue?"#fee2e2":days===0?"#fef9c3":"#eff6ff",
-                color:done?"#16a34a":skipped?"#94a3b8":overdue?"#ef4444":days===0?"#854d0e":"#3b82f6"
-              }}>{done?"":skipped?"":overdue?`${Math.abs(days)}d`:days===0?"Danas":days===1?"Sutra":`${days}d`}</span>
-              {t.priority&&!done&&!skipped&&<span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",background:"#fef9c3",color:"#854d0e"}}>Prioritet</span>}
+              <span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",background:statusBg,color:statusColor}}>{statusText}</span>
+              {t.priority&&!done&&!skipped&&!isKvar&&<span style={{fontSize:10,fontWeight:700,borderRadius:4,padding:"1px 5px",background:"#fef9c3",color:"#854d0e"}}>Prioritet</span>}
             </div>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-            {!done&&!skipped&&<><button onClick={onDone} style={{background:"#dcfce7",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}></button><button onClick={onSkip} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}></button></>}
+            {!done&&!skipped&&<><button onClick={onDone} style={{background:"#dcfce7",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}>✓</button><button onClick={onSkip} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:12,cursor:"pointer"}}>✗</button></>}
             {(done||skipped)&&<button onClick={onReset} style={{background:"#f1f5f9",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#94a3b8"}}>↩</button>}
             {onDelete&&<button onClick={onDelete} style={{background:"#fef2f2",border:"none",borderRadius:5,width:22,height:22,fontSize:10,cursor:"pointer",color:"#ef4444"}}>Obriši</button>}
           </div>
@@ -2437,6 +2463,14 @@ function RadionicaScreen({ user, cats, allData, onBack, settingsBtn, isAdmin }) 
             <button onClick={()=>setShowAddTask(true)} style={{background:"rgba(255,255,255,0.25)",border:"none",color:"#fff",borderRadius:6,width:24,height:24,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
           </div>
         </div>
+
+        {/* Aktivni kvarovi — uvijek na vrhu */}
+        {kvarTasks.length>0&&(
+          <div style={{padding:"8px 8px 0",borderBottom:"2px solid #fecaca"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#ef4444",textTransform:"uppercase",letterSpacing:0.5,marginBottom:6}}>! Aktivni kvarovi</div>
+            {kvarTasks.map(t=><MiniTaskRow key={t.id} t={t} today={today} daysUntil={daysUntil} formatDate={formatDate} onDone={()=>{ setTaskStatus(t.id,"done"); resolveKvar(t.itemKey); }} onSkip={()=>setTaskStatus(t.id,"skipped")} onReset={()=>setTaskStatus(t.id,"pending")} onDelete={isAdmin?()=>deleteTask(t.id):null}/>)}
+          </div>
+        )}
 
         {/* Zakasnili */}
         {overdueTasks.length>0&&(
